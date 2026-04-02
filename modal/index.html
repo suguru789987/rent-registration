@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>地代家賃 適用確認モーダル - モック</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif;
+    background: #f5f6fa; color: #333;
+  }
+  .bg-page { max-width: 1100px; margin: 0 auto; padding: 32px 40px; background: #fff; min-height: 100vh; opacity: 0.3; }
+  .overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+    display: flex; align-items: center; justify-content: center; z-index: 1000;
+  }
+  .modal {
+    background: #fff; border-radius: 12px; width: 520px;
+    max-height: 85vh; display: flex; flex-direction: column;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.2);
+  }
+
+  /* ヘッダー */
+  .modal-head { padding: 24px 24px 16px; flex-shrink: 0; }
+  .modal-title { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+  .modal-title h3 { font-size: 16px; font-weight: 700; }
+  .modal-title .sub { font-size: 12px; color: #888; margin-top: 4px; }
+  .close-btn { background: none; border: none; font-size: 20px; color: #aaa; cursor: pointer; line-height: 1; }
+  .close-btn:hover { color: #666; }
+
+  .new-default { background: #f0faf7; border-radius: 8px; padding: 12px 16px; margin-bottom: 12px; }
+  .new-default .label { font-size: 12px; color: #666; font-weight: 600; }
+  .new-default .values { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+  .old-val { font-size: 14px; color: #999; text-decoration: line-through; }
+  .arrow { color: #2ec4a5; font-weight: 700; }
+  .new-val { font-size: 16px; font-weight: 700; color: #2ec4a5; }
+
+  .count-info { font-size: 12px; color: #666; margin-bottom: 8px; }
+  .count-info .c-reg { color: #2ec4a5; font-weight: 600; }
+  .count-info .c-unreg { color: #e67e22; font-weight: 600; }
+
+  /* テーブル */
+  .month-table-wrap { flex: 1; overflow-y: auto; min-height: 0; padding: 0 24px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th {
+    position: sticky; top: 0; background: #fff;
+    text-align: left; font-size: 11px; color: #999; font-weight: 600;
+    padding: 6px 4px; border-bottom: 2px solid #eee; z-index: 1;
+  }
+  thead th:first-child { width: 32px; text-align: center; }
+  thead th:nth-child(3),
+  thead th:nth-child(4) { text-align: right; }
+
+  tbody tr { border-bottom: 1px solid #f0f0f0; cursor: pointer; transition: background 0.1s; }
+  tbody tr:hover { background: #fafbff; }
+  tbody tr.checked { background: #f7fdfa; }
+  tbody tr.registered { border-left: 3px solid #f0ad4e; background: #fffbf5; }
+  tbody tr.registered.checked { background: #fff7eb; }
+  tbody tr.registered .cur { color: #e67e22; }
+  tbody td { padding: 10px 4px; vertical-align: middle; }
+  tbody td:first-child { text-align: center; }
+  tbody td:nth-child(3),
+  tbody td:nth-child(4) { text-align: right; }
+
+  /* チェックボックス */
+  .cb-cell input { display: none; }
+  .cb-v {
+    width: 18px; height: 18px; border: 2px solid #ccc; border-radius: 4px;
+    display: inline-flex; align-items: center; justify-content: center;
+    transition: all 0.15s; cursor: pointer;
+  }
+  tr.checked .cb-v, .sel-all.checked .cb-v { background: #2ec4a5; border-color: #2ec4a5; }
+  tr.checked .cb-v::after, .sel-all.checked .cb-v::after { content: '\2713'; color: #fff; font-size: 11px; font-weight: 700; }
+
+  /* 全選択行 */
+  .sel-all {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 4px; border-bottom: 2px solid #eee; cursor: pointer;
+    margin-bottom: 0;
+  }
+  .sel-all span { font-size: 12px; font-weight: 600; color: #555; }
+
+  /* 月名 */
+  .m-name { font-weight: 600; }
+
+  /* ステータス */
+  .tag-s, .tag-u {
+    font-size: 9px; font-weight: 600; padding: 1px 5px;
+    border-radius: 3px; margin-left: 4px; vertical-align: middle;
+  }
+  .tag-s { background: #fff0db; color: #e67e22; }
+  .tag-u { background: #fff3e0; color: #e67e22; }
+
+  /* 現在値 */
+  .cur { color: #666; }
+
+  /* 更新後 */
+  .aft-apply { color: #2ec4a5; font-weight: 600; }
+  .aft-keep { color: #999; }
+
+  /* フッター */
+  .modal-foot {
+    padding: 16px 24px; border-top: 1px solid #eee;
+    display: flex; justify-content: flex-end; gap: 8px; flex-shrink: 0;
+  }
+  .btn {
+    padding: 9px 20px; border-radius: 8px; font-size: 13px;
+    font-weight: 600; cursor: pointer; border: none; transition: all 0.15s;
+  }
+  .btn-cancel { background: #f5f5f5; color: #666; }
+  .btn-cancel:hover { background: #eee; }
+  .btn-primary { background: #2ec4a5; color: #fff; }
+  .btn-primary:hover { background: #27b098; }
+
+  /* デモタブ */
+  .demo-tabs {
+    position: fixed; top: 12px; left: 50%; transform: translateX(-50%);
+    z-index: 2000; display: flex; gap: 4px; background: #fff;
+    border-radius: 8px; padding: 4px; box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+  }
+  .demo-tab {
+    padding: 8px 16px; border-radius: 6px; font-size: 13px;
+    font-weight: 600; cursor: pointer; border: none; background: none; color: #888;
+  }
+  .demo-tab.active { background: #2ec4a5; color: #fff; }
+</style>
+</head>
+<body>
+
+<div class="demo-tabs">
+  <button class="demo-tab active" onclick="showMode('initial')">1. 初期設定時</button>
+  <button class="demo-tab" onclick="showMode('update')">2. 再設定時</button>
+</div>
+
+<div class="bg-page"></div>
+
+<!-- ===== モード1: 初期設定時 ===== -->
+<div class="overlay" id="modal-initial">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title">
+        <div>
+          <h3>地代家賃 適用確認</h3>
+          <div class="sub">新しい賃料設定を各月に適用します</div>
+        </div>
+        <button class="close-btn">&times;</button>
+      </div>
+      <div class="new-default">
+        <div class="label">賃料設定条件</div>
+        <div class="values"><span class="new-val" style="font-size:13px">段階別歩合 / 最大値選択 / 最低保証¥800,000</span></div>
+      </div>
+      <div class="sel-all checked" id="selall-init" onclick="toggleAll('init')">
+        <div class="cb-v"></div>
+        <span>全月選択</span>
+      </div>
+    </div>
+    <div class="month-table-wrap">
+      <table><thead><tr><th></th><th>月</th><th>現在</th><th>更新後</th></tr></thead>
+      <tbody id="tbody-init"></tbody></table>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-cancel">キャンセル</button>
+      <button class="btn btn-primary" onclick="alert('地代家賃設定を適用しました')">反映する</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== モード2: 再設定時 ===== -->
+<div class="overlay" id="modal-update" style="display:none">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title">
+        <div>
+          <h3>地代家賃 適用確認</h3>
+          <div class="sub">賃料設定の更新内容を確認してください</div>
+        </div>
+        <button class="close-btn">&times;</button>
+      </div>
+      <div class="new-default">
+        <div class="label">賃料設定条件</div>
+        <div class="values"><span class="new-val" style="font-size:13px">段階別歩合 / 最大値選択 / 最低保証¥800,000</span></div>
+      </div>
+      <div class="count-info"><span class="c-reg">登録済 3件</span>　<span class="c-unreg">未登録 9件</span></div>
+      <div class="sel-all checked" id="selall-upd" onclick="toggleAll('upd')">
+        <div class="cb-v"></div>
+        <span>全月選択</span>
+      </div>
+    </div>
+    <div class="month-table-wrap">
+      <table><thead><tr><th></th><th>月</th><th>現在</th><th>更新後</th></tr></thead>
+      <tbody id="tbody-upd"></tbody></table>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-cancel">キャンセル</button>
+      <button class="btn btn-primary" onclick="alert('賃料設定を更新しました')">反映する</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const months = [1,2,3,4,5,6,7,8,9,10,11,12];
+const registered = { 3: 555555, 5: 750000, 8: 1200000 };
+const fmt = n => n === null ? '-' : '¥' + n.toLocaleString();
+
+// 月別売上予算 → 賃料設定条件で計算されたデフォルト額（月ごとに異なる）
+const monthlyDefault = {
+  1:  800000,  // 売上予算 ¥8,000,000 → 最低保証適用
+  2:  800000,  // 売上予算 ¥7,500,000 → 最低保証適用
+  3:  800000,  // 売上予算 ¥10,000,000
+  4:  850000,  // 売上予算 ¥11,000,000
+  5:  800000,  // 売上予算 ¥9,500,000
+  6:  820000,  // 売上予算 ¥10,500,000
+  7:  900000,  // 売上予算 ¥12,000,000
+  8:  950000,  // 売上予算 ¥13,000,000
+  9:  830000,  // 売上予算 ¥10,800,000
+  10: 800000,  // 売上予算 ¥9,000,000
+  11: 860000,  // 売上予算 ¥11,500,000
+  12: 920000,  // 売上予算 ¥12,500,000
+};
+// 旧設定時のデフォルト額（再設定モードの「現在」列で未登録月に使用）
+const oldMonthlyDefault = {
+  1: 750000, 2: 750000, 3: 750000, 4: 780000, 5: 750000, 6: 760000,
+  7: 800000, 8: 830000, 9: 770000, 10: 750000, 11: 790000, 12: 810000
+};
+
+function build(mode) {
+  const tbody = document.getElementById('tbody-' + mode);
+  tbody.innerHTML = '';
+  months.forEach(m => {
+    const isUpd = mode === 'upd';
+    const isReg = isUpd && registered.hasOwnProperty(m);
+    const curVal = isReg ? registered[m] : (isUpd ? oldMonthlyDefault[m] : null);
+    const newVal = monthlyDefault[m];
+    const defaultChecked = !isReg; // 単月設定済み月はデフォルトでチェックなし
+    const tr = document.createElement('tr');
+    tr.className = (defaultChecked ? 'checked' : '') + (isReg ? ' registered' : '');
+    tr.id = mode + '-r-' + m;
+    tr.dataset.month = m;
+    tr.dataset.reg = isReg ? '1' : '0';
+    tr.dataset.cur = curVal;
+    tr.dataset.newval = newVal;
+    tr.onclick = () => toggleRow(mode, m);
+    const srcLabel = isReg ? '単月設定' : (isUpd ? 'デフォルト計算額' : '');
+    const srcColor = isReg ? '#e67e22' : '#999';
+    const aftClass = defaultChecked ? 'aft-apply' : 'aft-keep';
+    const aftText = defaultChecked ? fmt(newVal) : fmt(curVal) + '<br><span style="font-size:10px">継続</span>';
+    tr.innerHTML = `
+      <td class="cb-cell"><input type="checkbox" id="${mode}-cb-${m}" ${defaultChecked ? 'checked' : ''}><div class="cb-v"></div></td>
+      <td><span class="m-name">${m}月</span>${isReg ? '<span class="tag-s">単月設定</span>' : (isUpd ? '' : '<span class="tag-u">未設定</span>')}</td>
+      <td class="cur">${fmt(curVal)}${srcLabel ? '<br><span style="font-size:10px;color:' + srcColor + '">' + srcLabel + '</span>' : ''}</td>
+      <td id="${mode}-aft-${m}" class="${aftClass}">${aftText}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function toggleRow(mode, m) {
+  const cb = document.getElementById(mode + '-cb-' + m);
+  cb.checked = !cb.checked;
+  updRow(mode, m);
+  updSelAll(mode);
+}
+
+function updRow(mode, m) {
+  const cb = document.getElementById(mode + '-cb-' + m);
+  const tr = document.getElementById(mode + '-r-' + m);
+  const aft = document.getElementById(mode + '-aft-' + m);
+  const curVal = tr.dataset.cur === 'null' ? null : parseInt(tr.dataset.cur);
+  const newVal = parseInt(tr.dataset.newval);
+  if (cb.checked) {
+    tr.classList.add('checked');
+    aft.className = 'aft-apply';
+    aft.innerHTML = fmt(newVal);
+  } else {
+    tr.classList.remove('checked');
+    aft.className = 'aft-keep';
+    aft.innerHTML = curVal !== null ? fmt(curVal) + '<br><span style="font-size:10px">継続</span>' : '-';
+  }
+}
+
+function toggleAll(mode) {
+  const sa = document.getElementById('selall-' + mode);
+  const next = !sa.classList.contains('checked');
+  next ? sa.classList.add('checked') : sa.classList.remove('checked');
+  months.forEach(m => {
+    document.getElementById(mode + '-cb-' + m).checked = next;
+    updRow(mode, m);
+  });
+}
+
+function updSelAll(mode) {
+  const all = months.every(m => document.getElementById(mode + '-cb-' + m).checked);
+  const sa = document.getElementById('selall-' + mode);
+  all ? sa.classList.add('checked') : sa.classList.remove('checked');
+}
+
+function showMode(mode) {
+  document.getElementById('modal-initial').style.display = mode === 'initial' ? 'flex' : 'none';
+  document.getElementById('modal-update').style.display = mode === 'update' ? 'flex' : 'none';
+  document.querySelectorAll('.demo-tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+build('init');
+build('upd');
+updSelAll('init');
+updSelAll('upd');
+</script>
+</body>
+</html>

@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>単月費用設定 - 地代家賃モック</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', sans-serif;
+    background: #f0f2f5;
+    min-height: 100vh;
+  }
+
+  .bg-page {
+    padding: 20px 28px;
+    opacity: 0.35;
+    pointer-events: none;
+  }
+  .bg-page-header {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
+  }
+  .bg-page-header h1 { font-size: 15px; color: #333; font-weight: 700; }
+  .bg-page-header .breadcrumb { font-size: 12px; color: #999; }
+  .bg-month {
+    display: inline-block; padding: 6px 16px; background: #fff;
+    border-radius: 6px; font-size: 13px; color: #333; margin-bottom: 16px;
+  }
+  .bg-card { background: #fff; border-radius: 8px; padding: 24px; height: 400px; }
+
+  .overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.35); z-index: 10;
+    display: flex; justify-content: center; align-items: center;
+  }
+
+  .modal {
+    background: #fff; border-radius: 8px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+    width: 620px; max-width: 92vw; max-height: 88vh;
+    overflow-y: auto; position: relative;
+  }
+  .modal-header { padding: 24px 28px 16px; }
+  .modal-header h2 { font-size: 17px; font-weight: 700; color: #222; }
+  .modal-header p { font-size: 13px; color: #999; margin-top: 4px; }
+  .modal-close {
+    position: absolute; top: 22px; right: 22px;
+    background: none; border: none; font-size: 20px; color: #ccc;
+    cursor: pointer; line-height: 1;
+  }
+  .modal-close:hover { color: #888; }
+  .modal-body { padding: 0 28px 20px; }
+  .modal-footer {
+    padding: 16px 28px 22px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+
+  /* 費目行 */
+  .expense-row {
+    display: flex; align-items: flex-end; gap: 16px; padding: 12px 0;
+  }
+  .expense-row + .expense-row { border-top: 1px solid #f0f0f0; }
+  .field-group label {
+    display: block; font-size: 12px; color: #888; margin-bottom: 5px; font-weight: 400;
+  }
+  .field-group select {
+    padding: 8px 32px 8px 12px; border: 1px solid #ddd; border-radius: 6px;
+    font-size: 13px; color: #333; background: #fff; appearance: auto; min-width: 140px;
+  }
+  .field-default {
+    font-size: 13px; color: #999; padding-bottom: 9px; white-space: nowrap;
+  }
+  .field-amount { flex: 1; }
+  .input-yen {
+    display: flex; align-items: center; border: 1px solid #ddd;
+    border-radius: 6px; overflow: hidden;
+  }
+  .input-yen .yen-prefix {
+    padding: 8px 10px; background: #f8f8f8; color: #999;
+    font-size: 13px; border-right: 1px solid #ddd;
+  }
+  .input-yen input {
+    border: none; padding: 8px 10px; font-size: 13px; color: #333;
+    width: 100%; outline: none; background: #fff;
+  }
+  .input-pct {
+    display: flex; align-items: center; border: 1px solid #ddd;
+    border-radius: 6px; overflow: hidden;
+  }
+  .input-pct input {
+    border: none; padding: 8px 10px; font-size: 13px; color: #333;
+    width: 100%; outline: none; background: #fff;
+  }
+  .input-pct .pct-suffix { padding: 8px 10px; color: #999; font-size: 13px; }
+
+  .btn-delete {
+    padding: 7px 16px; border: 1px solid #f0f0f0; border-radius: 6px;
+    background: #fff; color: #e74c3c; font-size: 12px; font-weight: 600;
+    cursor: pointer; white-space: nowrap; display: flex; align-items: center; gap: 4px;
+  }
+  .btn-delete:hover { background: #fef5f5; border-color: #f5d5d5; }
+
+  .btn-add {
+    background: none; border: none; color: #4ecdc4;
+    font-size: 13px; font-weight: 600; cursor: pointer; padding: 8px 0;
+  }
+  .btn-add:hover { color: #3dbdb4; }
+
+  .btn {
+    padding: 10px 28px; border-radius: 8px; font-size: 14px; font-weight: 600;
+    cursor: pointer; border: none; transition: all 0.15s;
+  }
+  .btn-ghost {
+    background: #f5f5f5; color: #666; border: 1px solid #e0e0e0;
+  }
+  .btn-ghost:hover { background: #eee; }
+  .btn-primary { background: #4ecdc4; color: #fff; }
+  .btn-primary:hover { background: #3dbdb4; }
+
+  /* トグルボタン */
+  .btn-toggle-override {
+    background: #fff;
+    border: 1px solid #4ecdc4;
+    color: #4ecdc4;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 7px 16px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.15s;
+    margin: 4px 0;
+  }
+  .btn-toggle-override:hover {
+    background: #f0fdfb;
+    border-color: #3dbdb4;
+    color: #3dbdb4;
+  }
+  .btn-toggle-override.open {
+    background: #f0fdfb;
+    border-color: #4ecdc4;
+  }
+
+  /* 地代家賃専用エリア */
+  .rent-override-area {
+    margin-top: 4px;
+    margin-bottom: 8px;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+  }
+
+  .rent-info-bar {
+    background: #f5faf9; border: 1px solid #ddf0ed; border-radius: 6px;
+    padding: 8px 12px; margin-bottom: 10px; font-size: 11px; color: #3a8a82;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .rent-info-bar .ii {
+    width: 15px; height: 15px; background: #4ecdc4; border-radius: 50%;
+    color: #fff; display: inline-flex; align-items: center; justify-content: center;
+    font-size: 9px; font-weight: 700; flex-shrink: 0;
+  }
+
+  .rent-radio-group { display: flex; gap: 8px; margin-bottom: 10px; }
+  .rent-radio {
+    flex: 1; display: flex; align-items: center; gap: 6px;
+    padding: 8px 12px; border: 1.5px solid #e8e8e8; border-radius: 6px;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .rent-radio:hover { border-color: #b8e6e1; }
+  .rent-radio.active { border-color: #4ecdc4; background: #f7fdfc; }
+  .rent-radio input[type="radio"] {
+    width: 15px; height: 15px; accent-color: #4ecdc4; cursor: pointer; flex-shrink: 0;
+  }
+  .rent-radio-text { font-size: 12px; font-weight: 600; color: #444; }
+  .rent-radio-desc { font-size: 10px; color: #aaa; font-weight: 400; }
+
+  .param-section {
+    background: #fafafa; border: 1px solid #eee; border-radius: 6px; padding: 12px 14px;
+  }
+  .param-section-desc { font-size: 11px; color: #aaa; margin-bottom: 8px; }
+  .param-row {
+    display: flex; align-items: center; padding: 7px 0;
+    border-bottom: 1px solid #f0f0f0; gap: 8px;
+  }
+  .param-row:last-of-type { border-bottom: none; }
+  .param-row input[type="checkbox"] {
+    width: 15px; height: 15px; accent-color: #4ecdc4; cursor: pointer; flex-shrink: 0;
+  }
+  .param-name { font-size: 12px; font-weight: 500; color: #555; width: 96px; flex-shrink: 0; }
+  .param-default { font-size: 11px; color: #bbb; width: 110px; flex-shrink: 0; }
+  .param-input { flex: 1; max-width: 150px; }
+  .param-input .input-yen input, .param-input .input-pct input { padding: 6px 8px; font-size: 12px; }
+  .param-input .yen-prefix { padding: 6px 8px; font-size: 12px; }
+  .param-input .pct-suffix { padding: 6px 8px; font-size: 12px; }
+  .param-input.disabled input { background: #f5f5f5; color: #ccc; }
+  .param-input.disabled .input-yen,
+  .param-input.disabled .input-pct { border-color: #eee; }
+
+  .calc-preview {
+    margin-top: 10px; background: #f0faf9; border: 1px solid #c8e8e4;
+    border-radius: 6px; padding: 10px 14px;
+  }
+  .preview-label { font-size: 10px; color: #3a8a82; font-weight: 600; margin-bottom: 2px; }
+  .preview-value { font-size: 18px; font-weight: 700; color: #1a8a7e; }
+  .preview-note { font-size: 10px; color: #6aada6; margin-top: 2px; line-height: 1.5; }
+  .badge-change {
+    display: inline-block; padding: 1px 6px; border-radius: 3px;
+    font-size: 10px; font-weight: 600; background: #fff3e0; color: #e67e22;
+  }
+
+  .helper-text { font-size: 11px; color: #aaa; margin-top: 4px; }
+  .direct-input-wrap { max-width: 180px; }
+
+  .section-divider { border: none; border-top: 1px solid #f0f0f0; margin: 0; }
+
+  .hidden { display: none !important; }
+
+  /* 賃料体系切り替え */
+  .rent-type-switch {
+    display: flex; gap: 6px; margin-bottom: 12px; align-items: center;
+    font-size: 11px; color: #888;
+  }
+  .rent-type-switch select {
+    padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px;
+    font-size: 11px; color: #555; background: #fff;
+  }
+
+  /* 誘導リンク */
+  .rent-link-box {
+    margin-top: 12px;
+    padding: 10px 14px;
+    background: #fff9f0;
+    border: 1px solid #f0e0c8;
+    border-radius: 6px;
+    font-size: 11px;
+    color: #8a6d3b;
+    line-height: 1.6;
+  }
+  .rent-link-box a {
+    color: #4ecdc4;
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .rent-link-box a:hover {
+    text-decoration: underline;
+    color: #3dbdb4;
+  }
+</style>
+</head>
+<body>
+
+<div class="bg-page">
+  <div class="bg-page-header">
+    <h1>予算設定: 月次予算設定</h1>
+    <span class="breadcrumb">ホーム &gt; 予算設定: 月次予算設定</span>
+  </div>
+  <div class="bg-month">2026年3月 &nbsp;&#9662;</div>
+  <div class="bg-card"></div>
+</div>
+
+<div class="overlay">
+  <div class="modal">
+    <button class="modal-close">&times;</button>
+    <div class="modal-header">
+      <h2>費用設定: 2026年3月</h2>
+      <p>デフォルト値から変更したい費目がある場合は登録してください</p>
+    </div>
+    <div class="modal-body">
+
+      <!-- 地代家賃行 -->
+      <div class="expense-row">
+        <div class="field-group">
+          <label>費目</label>
+          <select><option selected>地代家賃</option></select>
+        </div>
+        <div class="field-default">
+          <label>デフォルト値</label>
+          &yen;452,000
+        </div>
+        <div class="field-amount">
+          <label>金額</label>
+          <div class="input-yen">
+            <span class="yen-prefix">&yen;</span>
+            <input type="text" value="452,000" id="rent-amount-input">
+          </div>
+        </div>
+        <div style="padding-bottom:1px;">
+          <button class="btn-delete">&#128465; 削除</button>
+        </div>
+      </div>
+
+      <!-- トグルボタン -->
+      <button class="btn-toggle-override" id="btn-toggle" onclick="toggleOverride()">
+        <span id="toggle-label">&#9654; 地代家賃の計算条件を確認・変更する</span>
+      </button>
+
+      <!-- 上書きエリア（初期非表示） -->
+      <div class="rent-override-area hidden" id="rent-override">
+
+        <!-- デモ用：賃料体系切り替え -->
+        <div class="rent-type-switch">
+          <span>デモ切替:</span>
+          <select onchange="switchRentType(this.value)">
+            <option value="variable" selected>変動賃料</option>
+            <option value="tiered">段階別歩合</option>
+          </select>
+        </div>
+
+        <!-- 変動賃料の情報バー -->
+        <div class="rent-info-bar" id="info-variable">
+          <span class="ii">i</span>
+          現在の設定: <strong>&nbsp;変動賃料 / 合算&nbsp;</strong> | デフォルト計算額: <strong>&nbsp;&yen;452,000</strong>（売上予算 &yen;5,000,000）
+        </div>
+        <!-- 段階別歩合の情報バー -->
+        <div class="rent-info-bar hidden" id="info-tiered">
+          <span class="ii">i</span>
+          現在の設定: <strong>&nbsp;段階別歩合 / 合算（3段階）&nbsp;</strong> | デフォルト計算額: <strong>&nbsp;&yen;552,000</strong>（売上予算 &yen;5,000,000）
+        </div>
+
+        <div class="rent-radio-group">
+          <div class="rent-radio active" id="radio-direct" onclick="switchMode('direct')">
+            <input type="radio" name="rent-mode" checked>
+            <div>
+              <div class="rent-radio-text">金額を直接指定</div>
+              <div class="rent-radio-desc">計算せず金額を使用</div>
+            </div>
+          </div>
+          <div class="rent-radio" id="radio-params" onclick="switchMode('params')">
+            <input type="radio" name="rent-mode">
+            <div>
+              <div class="rent-radio-text">計算条件を変更</div>
+              <div class="rent-radio-desc">パラメータを変更して再計算</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 金額直接指定 -->
+        <div class="param-section" id="section-direct">
+          <label style="font-size:11px; color:#888; margin-bottom:4px; font-weight:500;">上書き金額</label>
+          <div class="direct-input-wrap">
+            <div class="input-yen">
+              <span class="yen-prefix">&yen;</span>
+              <input type="text" value="500,000">
+            </div>
+          </div>
+          <div class="helper-text">この月は計算式を使わず、入力金額が地代家賃になります。</div>
+          <div class="calc-preview">
+            <div class="preview-label">この月の地代家賃</div>
+            <div class="preview-value">&yen;500,000</div>
+            <div class="preview-note">デフォルト（&yen;452,000）から &yen;48,000 増加</div>
+          </div>
+        </div>
+
+        <!-- 計算条件変更（変動賃料） -->
+        <div class="param-section hidden" id="section-params">
+          <div class="param-section-desc">変更する項目にチェック。未チェックはデフォルト値を使用。</div>
+
+          <div class="param-row">
+            <input type="checkbox" checked onchange="toggleParam(this, 'fixed')">
+            <div class="param-name">固定賃料</div>
+            <div class="param-default">初期値: &yen;352,000</div>
+            <div class="param-input" id="param-fixed">
+              <div class="input-yen">
+                <span class="yen-prefix">&yen;</span>
+                <input type="text" value="400,000">
+              </div>
+            </div>
+          </div>
+
+          <div class="param-row">
+            <input type="checkbox" onchange="toggleParam(this, 'comm')">
+            <div class="param-name">歩合率</div>
+            <div class="param-default">初期値: 10%</div>
+            <div class="param-input disabled" id="param-comm">
+              <div class="input-pct">
+                <input type="text" value="10" disabled>
+                <span class="pct-suffix">%</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="param-row">
+            <input type="checkbox" onchange="toggleParam(this, 'thresh')">
+            <div class="param-name">売上閾値</div>
+            <div class="param-default">初期値: 未設定</div>
+            <div class="param-input disabled" id="param-thresh">
+              <div class="input-yen">
+                <span class="yen-prefix">&yen;</span>
+                <input type="text" value="" placeholder="未設定" disabled>
+              </div>
+            </div>
+          </div>
+
+          <div class="param-row">
+            <input type="checkbox" onchange="toggleParam(this, 'srate')">
+            <div class="param-name">売上歩合対象率</div>
+            <div class="param-default">初期値: 100%</div>
+            <div class="param-input disabled" id="param-srate">
+              <div class="input-pct">
+                <input type="text" value="100" disabled>
+                <span class="pct-suffix">%</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="param-row">
+            <input type="checkbox" onchange="toggleParam(this, 'mingua')">
+            <div class="param-name">最低保証額</div>
+            <div class="param-default">初期値: &yen;200,000</div>
+            <div class="param-input disabled" id="param-mingua">
+              <div class="input-yen">
+                <span class="yen-prefix">&yen;</span>
+                <input type="text" value="200,000" disabled>
+              </div>
+            </div>
+          </div>
+
+          <div class="calc-preview">
+            <div class="preview-label">この月の予測計算結果（売上予算 &yen;5,000,000 で試算）</div>
+            <div class="preview-value">&yen;900,000</div>
+            <div class="preview-note">
+              内訳: &yen;400,000 + &yen;500,000（&yen;5,000,000 x 10%）&nbsp;
+              <span class="badge-change">固定賃料を変更中</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 計算条件変更（段階別歩合） -->
+        <div class="param-section hidden" id="section-params-tiered">
+          <div class="param-section-desc">変更する項目にチェック。未チェックはデフォルト値を使用。<br>※ 売上帯（下限・上限）は単月では変更できません。</div>
+
+          <div class="param-row">
+            <input type="checkbox" onchange="toggleParam(this, 'fixed-t')">
+            <div class="param-name">固定賃料</div>
+            <div class="param-default">初期値: &yen;352,000</div>
+            <div class="param-input disabled" id="param-fixed-t">
+              <div class="input-yen">
+                <span class="yen-prefix">&yen;</span>
+                <input type="text" value="352,000" disabled>
+              </div>
+            </div>
+          </div>
+
+          <div class="param-row">
+            <input type="checkbox" onchange="toggleParam(this, 'srate-t')">
+            <div class="param-name">売上歩合対象率</div>
+            <div class="param-default">初期値: 100%</div>
+            <div class="param-input disabled" id="param-srate-t">
+              <div class="input-pct">
+                <input type="text" value="100" disabled>
+                <span class="pct-suffix">%</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="param-row">
+            <input type="checkbox" onchange="toggleParam(this, 'mingua-t')">
+            <div class="param-name">最低保証額</div>
+            <div class="param-default">初期値: &yen;200,000</div>
+            <div class="param-input disabled" id="param-mingua-t">
+              <div class="input-yen">
+                <span class="yen-prefix">&yen;</span>
+                <input type="text" value="200,000" disabled>
+              </div>
+            </div>
+          </div>
+
+          <!-- 段階別歩合率 -->
+          <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #e8e8e8;">
+            <div style="font-size: 11px; color: #888; font-weight: 600; margin-bottom: 6px;">段階別歩合率</div>
+
+            <div class="param-row">
+              <input type="checkbox" onchange="toggleParam(this, 'tier1')">
+              <div class="param-name">1段目</div>
+              <div class="param-default" style="font-size:10px; color:#bbb;">0 〜 &yen;3,000,000</div>
+              <div class="param-input disabled" id="param-tier1">
+                <div class="input-pct">
+                  <input type="text" value="0" disabled>
+                  <span class="pct-suffix">%</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="param-row">
+              <input type="checkbox" onchange="toggleParam(this, 'tier2')">
+              <div class="param-name">2段目</div>
+              <div class="param-default" style="font-size:10px; color:#bbb;">&yen;3,000,000 〜 &yen;5,000,000</div>
+              <div class="param-input disabled" id="param-tier2">
+                <div class="input-pct">
+                  <input type="text" value="10" disabled>
+                  <span class="pct-suffix">%</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="param-row">
+              <input type="checkbox" onchange="toggleParam(this, 'tier3')">
+              <div class="param-name">3段目</div>
+              <div class="param-default" style="font-size:10px; color:#bbb;">&yen;5,000,000 〜</div>
+              <div class="param-input disabled" id="param-tier3">
+                <div class="input-pct">
+                  <input type="text" value="8" disabled>
+                  <span class="pct-suffix">%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="calc-preview">
+            <div class="preview-label">この月の予測計算結果（売上予算 &yen;5,000,000 で試算）</div>
+            <div class="preview-value">&yen;552,000</div>
+            <div class="preview-note">
+              内訳: &yen;352,000 + 歩合合計 &yen;200,000（1段目 &yen;0 + 2段目 &yen;200,000 + 3段目 &yen;0）
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <hr class="section-divider">
+
+      <!-- 固定人件費 -->
+      <div class="expense-row">
+        <div class="field-group">
+          <label>費目</label>
+          <select><option selected>固定人件費</option></select>
+        </div>
+        <div class="field-default">
+          <label>デフォルト値</label>
+          &yen;800,000
+        </div>
+        <div class="field-amount">
+          <label>金額</label>
+          <div class="input-yen">
+            <span class="yen-prefix">&yen;</span>
+            <input type="text" value="800,000">
+          </div>
+        </div>
+        <div style="padding-bottom:1px;">
+          <button class="btn-delete">&#128465; 削除</button>
+        </div>
+      </div>
+
+      <hr class="section-divider">
+
+      <!-- 資材費 -->
+      <div class="expense-row">
+        <div class="field-group">
+          <label>費目</label>
+          <select><option selected>資材費</option></select>
+        </div>
+        <div class="field-default">
+          <label>デフォルト値</label>
+          &yen;50,000
+        </div>
+        <div class="field-amount">
+          <label>金額</label>
+          <div class="input-yen">
+            <span class="yen-prefix">&yen;</span>
+            <input type="text" value="50,000">
+          </div>
+        </div>
+        <div style="padding-bottom:1px;">
+          <button class="btn-delete">&#128465; 削除</button>
+        </div>
+      </div>
+
+      <button class="btn-add">+ 設定費目を追加する</button>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-ghost">費用設定値を変更しない</button>
+      <button class="btn btn-primary">保存する</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let overrideOpen = false;
+let currentRentType = 'variable';
+
+function toggleOverride() {
+  overrideOpen = !overrideOpen;
+  document.getElementById('rent-override').classList.toggle('hidden', !overrideOpen);
+  var label = document.getElementById('toggle-label');
+  var btn = document.getElementById('btn-toggle');
+  if (overrideOpen) {
+    label.innerHTML = '&#9650; 計算条件を閉じる';
+    btn.classList.add('open');
+  } else {
+    label.innerHTML = '&#9660; 地代家賃の計算条件を確認・変更する';
+    btn.classList.remove('open');
+  }
+}
+
+function switchRentType(type) {
+  currentRentType = type;
+  document.getElementById('info-variable').classList.toggle('hidden', type !== 'variable');
+  document.getElementById('info-tiered').classList.toggle('hidden', type !== 'tiered');
+  // ラジオをdirectにリセット
+  switchMode('direct');
+}
+
+function switchMode(mode) {
+  document.getElementById('radio-direct').classList.toggle('active', mode === 'direct');
+  document.getElementById('radio-params').classList.toggle('active', mode === 'params');
+  document.getElementById('radio-direct').querySelector('input').checked = mode === 'direct';
+  document.getElementById('radio-params').querySelector('input').checked = mode === 'params';
+
+  document.getElementById('section-direct').classList.toggle('hidden', mode !== 'direct');
+
+  // 変動賃料パラメータ
+  document.getElementById('section-params').classList.toggle('hidden',
+    !(mode === 'params' && currentRentType === 'variable'));
+  // 段階別歩合パラメータ
+  document.getElementById('section-params-tiered').classList.toggle('hidden',
+    !(mode === 'params' && currentRentType === 'tiered'));
+}
+
+function toggleParam(checkbox, paramId) {
+  const container = document.getElementById('param-' + paramId);
+  const input = container.querySelector('input');
+  if (checkbox.checked) {
+    container.classList.remove('disabled');
+    input.disabled = false;
+    input.focus();
+  } else {
+    container.classList.add('disabled');
+    input.disabled = true;
+  }
+}
+</script>
+
+</body>
+</html>
