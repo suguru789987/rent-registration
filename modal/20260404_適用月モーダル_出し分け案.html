@@ -176,6 +176,33 @@
     display: flex; justify-content: flex-end; gap: 8px; flex-shrink: 0;
   }
 
+  /* ===== カード型リスト（再更新モーダル） ===== */
+  .month-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px; border-radius: 8px; cursor: pointer;
+    border: 1px solid #eee; margin-bottom: 6px; transition: all 0.15s;
+  }
+  .month-item:hover { background: #fafbff; }
+  .month-item.on { background: #f0faf7; border-color: #2ec4a5; }
+  .month-item.protected { background: #fffbf5; border-color: #f0ad4e; cursor: pointer; }
+  .month-item .mi-cb {
+    width: 20px; height: 20px; border: 2px solid #ccc; border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: all 0.15s;
+  }
+  .month-item.on .mi-cb { background: #2ec4a5; border-color: #2ec4a5; }
+  .month-item.on .mi-cb::after { content: '\2713'; color: #fff; font-size: 12px; font-weight: 700; }
+  .month-item.protected .mi-cb { background: #fff; border-color: #f0ad4e; }
+  .month-item.protected.on .mi-cb { background: #2ec4a5; border-color: #2ec4a5; }
+  .month-item.protected.on .mi-cb::after { content: '\2713'; color: #fff; font-size: 12px; font-weight: 700; }
+  .month-item.protected.on { border-color: #2ec4a5; background: #f0faf7; }
+  .mi-label { font-size: 14px; font-weight: 600; min-width: 36px; }
+  .mi-info { flex: 1; text-align: right; }
+  .mi-amount { font-size: 13px; color: #2ec4a5; font-weight: 600; }
+  .month-item.protected .mi-amount { color: #e67e22; }
+  .mi-tag { font-size: 9px; color: #e67e22; font-weight: 600; background: #fff0db; padding: 1px 5px; border-radius: 3px; margin-left: 6px; }
+  .mi-status { font-size: 10px; color: #999; }
+
   /* 注釈 */
   .note {
     position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
@@ -188,8 +215,9 @@
 <body>
 
 <div class="demo-tabs">
-  <button class="demo-tab active" onclick="showMode('initial')">1. 初回登録時（ダイアログ）</button>
-  <button class="demo-tab" onclick="showMode('update')">2. 再更新時（モーダル）</button>
+  <button class="demo-tab active" onclick="showMode('initial')">1. 初回登録時</button>
+  <button class="demo-tab" onclick="showMode('update-no-monthly')">2. 再更新（単月なし）</button>
+  <button class="demo-tab" onclick="showMode('update')">3. 再更新（単月あり）</button>
 </div>
 
 <div class="bg-page"></div>
@@ -242,23 +270,76 @@
   </div>
 </div>
 
-<!-- ===== モード2: 再更新時 - 適用月設定モーダル（現行ベース） ===== -->
+<!-- ===== モード2a: 再更新時（単月設定なし） - ダイアログ ===== -->
+<div class="overlay" id="modal-update-no-monthly" style="display:none">
+  <div class="modal dialog">
+    <div class="dialog-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+        <polyline points="9 22 9 12 15 12 15 22"/>
+      </svg>
+    </div>
+    <h3>デフォルト計算額の更新適用</h3>
+    <div class="sub">賃料設定を更新し、各月に適用します</div>
+
+    <div class="condition-box">
+      <div class="label">新しいデフォルト計算額</div>
+      <div class="value" style="font-size:18px">¥800,000</div>
+      <div class="detail">段階別歩合 / 最大値選択 / 固定¥180,532 / 最低保証 ¥800,000</div>
+    </div>
+
+    <div class="select-group">
+      <label>予算開始月</label>
+      <div class="select-wrap">
+        <select id="upd-no-start-month" onchange="onUpdNoStartMonthChange()">
+          <option value="3" selected>3月</option>
+          <option value="4">4月</option>
+          <option value="5">5月</option>
+          <option value="6">6月</option>
+          <option value="7">7月</option>
+          <option value="8">8月</option>
+          <option value="9">9月</option>
+          <option value="10">10月</option>
+          <option value="11">11月</option>
+          <option value="12">12月</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="msg confirm" id="upd-no-msg">3月〜12月にデフォルト計算額を適用します</div>
+
+    <div class="dialog-foot">
+      <button class="btn btn-back">← 費用設定に戻る</button>
+      <button class="btn btn-cancel">キャンセル</button>
+      <button class="btn btn-primary" onclick="alert('デフォルト計算額を更新適用しました')">適用する</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== モード2b: 再更新時（単月設定あり） - モーダル ===== -->
 <div class="overlay" id="modal-update" style="display:none">
-  <div class="modal modal-update">
-    <div class="modal-head">
+  <div class="modal modal-update" style="width:460px">
+    <div class="modal-head" style="padding:24px 24px 12px">
       <div class="modal-title">
         <div>
-          <h3>地代家賃 月別設定: 2026年</h3>
-          <div class="sub">賃料設定の更新内容を確認してください</div>
+          <h3>デフォルト計算額の適用確認</h3>
+          <div class="sub">各月の設定を活かすか、デフォルト計算額で上書きするか選択してください。</div>
         </div>
         <button class="close-btn">&times;</button>
       </div>
-      <div class="new-default">
-        <div class="label">新しいデフォルト額</div>
-        <div class="values"><span class="new-val">¥800,000</span></div>
+
+      <div style="background:#fff5eb;border:1px solid #f0ad4e;border-radius:8px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:8px">
+        <span style="font-size:16px">⚠</span>
+        <span style="font-size:13px;font-weight:600;color:#b8860b">単月地代家賃の登録が <span id="upd-reg-count" style="color:#e67e22;font-size:15px">2</span> 件あります</span>
       </div>
+
+      <div class="condition-box" style="margin-bottom:16px">
+        <div class="label">新しいデフォルト計算額</div>
+        <div class="value" style="font-size:18px">¥800,000</div>
+      </div>
+
       <div class="select-group" style="margin-bottom:12px">
-        <label>予算開始月 <span style="font-size:10px;color:#999">（初回設定から引き継ぎ・変更可能）</span></label>
+        <label>予算開始月</label>
         <div class="select-wrap">
           <select id="upd-start-month" onchange="onUpdStartMonthChange()">
             <option value="3" selected>3月</option>
@@ -274,16 +355,12 @@
           </select>
         </div>
       </div>
-      <div class="count-info"><span class="c-reg" id="upd-reg-count">登録済 2件</span>　<span class="c-unreg" id="upd-unreg-count">未登録 4件</span></div>
-      <div class="sel-all" id="selall-upd" onclick="toggleAll('upd')">
-        <div class="cb-v"></div>
-        <span>すべて選択　<span id="upd-count" style="color:#999">4件選択中</span></span>
-      </div>
     </div>
-    <div class="month-table-wrap">
-      <table><thead><tr><th></th><th>月</th><th>現在</th><th>更新後</th></tr></thead>
-      <tbody id="tbody-upd"></tbody></table>
+
+    <div class="month-list-wrap" style="flex:1;overflow-y:auto;padding:0 24px 8px;max-height:340px">
+      <div id="month-list-upd"></div>
     </div>
+
     <div class="modal-foot">
       <button class="btn btn-back">← 費用設定に戻る</button>
       <button class="btn btn-cancel">キャンセル</button>
@@ -293,7 +370,7 @@
 </div>
 
 <div class="note">
-  <strong>出し分け条件:</strong> 単月設定が0件 → 初回ダイアログ ／ 単月設定が1件以上 → 再更新モーダル
+  <strong>出し分け条件:</strong> 初回登録 → ダイアログ ／ 再更新+単月設定0件 → ダイアログ ／ 再更新+単月設定1件以上 → モーダル（件数表示）
 </div>
 
 <script>
@@ -362,99 +439,92 @@ function onUpdStartMonthChange() {
 }
 
 function build() {
-  const tbody = document.getElementById('tbody-upd');
-  tbody.innerHTML = '';
+  const list = document.getElementById('month-list-upd');
+  list.innerHTML = '';
   const visibleMonths = getVisibleMonths();
-  let regCount = 0;
-  let unregCount = 0;
 
+  let regCount = 0;
   visibleMonths.forEach(m => {
     const isReg = registered.hasOwnProperty(m);
-    if (isReg) regCount++; else unregCount++;
-    const curVal = oldValues[m];
+    if (isReg) regCount++;
     const newVal = monthlyDefault[m];
-    const defaultChecked = !isReg;
-    const tr = document.createElement('tr');
-    tr.className = (defaultChecked ? 'checked' : '') + (isReg ? ' registered' : '');
-    tr.id = 'upd-r-' + m;
-    tr.dataset.month = m;
-    tr.dataset.reg = isReg ? '1' : '0';
-    tr.dataset.cur = curVal;
-    tr.dataset.newval = newVal;
-    tr.onclick = () => toggleRow(m);
+    const curVal = oldValues[m];
+    const div = document.createElement('div');
+    div.id = 'upd-r-' + m;
+    div.dataset.month = m;
+    div.dataset.reg = isReg ? '1' : '0';
 
-    const srcLabel = isReg ? '単月設定' : 'デフォルト計算額';
-    const srcColor = isReg ? '#e67e22' : '#999';
-    const aftClass = defaultChecked ? 'aft-apply' : 'aft-keep';
-    const aftText = defaultChecked
-      ? fmt(newVal)
-      : fmt(curVal) + '<br><span style="font-size:10px">継続</span>';
-
-    tr.innerHTML = `
-      <td class="cb-cell"><input type="checkbox" id="upd-cb-${m}" ${defaultChecked ? 'checked' : ''}><div class="cb-v"></div></td>
-      <td><span class="m-name">${m}月</span>${isReg ? '<span class="tag-s">単月設定</span>' : ''}</td>
-      <td class="cur">${fmt(curVal)}<br><span style="font-size:10px;color:${srcColor}">${srcLabel}</span></td>
-      <td id="upd-aft-${m}" class="${aftClass}">${aftText}</td>`;
-    tbody.appendChild(tr);
+    if (isReg) {
+      div.className = 'month-item protected';
+      div.onclick = () => toggleRow(m);
+      div.innerHTML = `
+        <div class="mi-cb"></div>
+        <input type="checkbox" id="upd-cb-${m}" style="display:none">
+        <div class="mi-label">${m}月</div>
+        <div class="mi-info">
+          <span class="mi-amount" id="upd-amt-${m}">${fmt(curVal)}</span>
+          <span class="mi-tag">単月設定済</span>
+          <div class="mi-status" id="upd-st-${m}">→ 単月設定を維持</div>
+        </div>`;
+    } else {
+      div.className = 'month-item on';
+      div.onclick = () => toggleRow(m);
+      div.innerHTML = `
+        <div class="mi-cb"></div>
+        <input type="checkbox" id="upd-cb-${m}" checked style="display:none">
+        <div class="mi-label">${m}月</div>
+        <div class="mi-info">
+          <span class="mi-amount" id="upd-amt-${m}">${fmt(newVal)}</span>
+          <div class="mi-status" id="upd-st-${m}">→ デフォルト適用</div>
+        </div>`;
+    }
+    list.appendChild(div);
   });
-
-  document.getElementById('upd-reg-count').textContent = '登録済 ' + regCount + '件';
-  document.getElementById('upd-unreg-count').textContent = '未登録 ' + unregCount + '件';
-  updSelAll();
-  updateCount();
+  document.getElementById('upd-reg-count').textContent = regCount;
 }
 
 function toggleRow(m) {
   const cb = document.getElementById('upd-cb-' + m);
+  if (!cb) return;
   cb.checked = !cb.checked;
-  updRow(m);
-  updSelAll();
-  updateCount();
+  updateRowDisplay(m);
 }
 
-function updRow(m) {
+function updateRowDisplay(m) {
   const cb = document.getElementById('upd-cb-' + m);
-  const tr = document.getElementById('upd-r-' + m);
-  const aft = document.getElementById('upd-aft-' + m);
-  const curVal = parseInt(tr.dataset.cur);
-  const newVal = parseInt(tr.dataset.newval);
+  if (!cb) return;
+  const div = document.getElementById('upd-r-' + m);
+  const amt = document.getElementById('upd-amt-' + m);
+  const st = document.getElementById('upd-st-' + m);
+  const isReg = div.dataset.reg === '1';
+  const newVal = monthlyDefault[m];
+  const curVal = oldValues[m];
+
   if (cb.checked) {
-    tr.classList.add('checked');
-    aft.className = 'aft-apply';
-    aft.innerHTML = fmt(newVal);
+    div.classList.add('on');
+    amt.textContent = fmt(newVal);
+    amt.style.color = '#2ec4a5';
+    st.textContent = isReg ? '→ デフォルトで上書き' : '→ デフォルト適用';
   } else {
-    tr.classList.remove('checked');
-    aft.className = 'aft-keep';
-    aft.innerHTML = fmt(curVal) + '<br><span style="font-size:10px">継続</span>';
+    div.classList.remove('on');
+    amt.textContent = curVal ? fmt(curVal) : '-';
+    amt.style.color = isReg ? '#e67e22' : '#999';
+    st.textContent = isReg ? '→ 単月設定を維持' : '→ 変更なし';
   }
 }
 
-function toggleAll(mode) {
-  const sa = document.getElementById('selall-upd');
-  const next = !sa.classList.contains('checked');
-  next ? sa.classList.add('checked') : sa.classList.remove('checked');
-  getVisibleMonths().forEach(m => {
-    document.getElementById('upd-cb-' + m).checked = next;
-    updRow(m);
-  });
-  updateCount();
-}
-
-function updSelAll() {
-  const visible = getVisibleMonths();
-  const all = visible.length > 0 && visible.every(m => document.getElementById('upd-cb-' + m).checked);
-  const sa = document.getElementById('selall-upd');
-  all ? sa.classList.add('checked') : sa.classList.remove('checked');
-}
-
-function updateCount() {
-  const count = getVisibleMonths().filter(m => document.getElementById('upd-cb-' + m).checked).length;
-  document.getElementById('upd-count').textContent = count + '件選択中';
+// ===== 再更新（単月なし）ダイアログ =====
+function onUpdNoStartMonthChange() {
+  const m = document.getElementById('upd-no-start-month').value;
+  const msg = document.getElementById('upd-no-msg');
+  msg.className = 'msg confirm';
+  msg.textContent = m + '月〜12月にデフォルト計算額を適用します';
 }
 
 // ===== 表示切替 =====
 function showMode(mode) {
   document.getElementById('modal-initial').style.display = mode === 'initial' ? 'flex' : 'none';
+  document.getElementById('modal-update-no-monthly').style.display = mode === 'update-no-monthly' ? 'flex' : 'none';
   document.getElementById('modal-update').style.display = mode === 'update' ? 'flex' : 'none';
   document.querySelectorAll('.demo-tab').forEach(t => t.classList.remove('active'));
   event.target.classList.add('active');
