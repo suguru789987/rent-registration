@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>地代家賃 適用確認 - 初回/再更新 出し分けモック</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif;
+    background: #f5f6fa; color: #333;
+  }
+  .bg-page { max-width: 1100px; margin: 0 auto; padding: 32px 40px; background: #fff; min-height: 100vh; opacity: 0.3; }
+  .overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+    display: flex; align-items: center; justify-content: center; z-index: 1000;
+  }
+
+  /* ===== デモタブ ===== */
+  .demo-tabs {
+    position: fixed; top: 12px; left: 50%; transform: translateX(-50%);
+    z-index: 2000; display: flex; gap: 4px; background: #fff;
+    border-radius: 8px; padding: 4px; box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+  }
+  .demo-tab {
+    padding: 8px 16px; border-radius: 6px; font-size: 13px;
+    font-weight: 600; cursor: pointer; border: none; background: none; color: #888;
+  }
+  .demo-tab.active { background: #2ec4a5; color: #fff; }
+
+  /* ===== 共通モーダル ===== */
+  .modal {
+    background: #fff; border-radius: 12px;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.2);
+  }
+
+  /* ===== 初回登録ダイアログ ===== */
+  .dialog {
+    width: 440px; padding: 28px 32px;
+  }
+  .dialog-icon {
+    width: 48px; height: 48px; background: #f0faf7; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 16px;
+  }
+  .dialog-icon svg { width: 24px; height: 24px; color: #2ec4a5; }
+  .dialog h3 {
+    font-size: 17px; font-weight: 700; text-align: center; margin-bottom: 4px;
+  }
+  .dialog .sub {
+    font-size: 12px; color: #888; text-align: center; margin-bottom: 20px;
+  }
+
+  /* 賃料設定条件 */
+  .condition-box {
+    background: #f0faf7; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px;
+  }
+  .condition-box .label { font-size: 11px; color: #888; font-weight: 600; margin-bottom: 4px; }
+  .condition-box .value { font-size: 13px; color: #2ec4a5; font-weight: 600; }
+  .condition-box .detail { font-size: 11px; color: #666; margin-top: 4px; }
+
+  /* プルダウン */
+  .select-group { margin-bottom: 16px; }
+  .select-group label {
+    font-size: 12px; font-weight: 600; color: #555; display: block; margin-bottom: 6px;
+  }
+  .select-wrap {
+    position: relative; display: inline-block; width: 100%;
+  }
+  .select-wrap select {
+    width: 100%; padding: 10px 36px 10px 14px; font-size: 14px;
+    border: 2px solid #e0e0e0; border-radius: 8px; background: #fff;
+    appearance: none; cursor: pointer; color: #333; font-weight: 500;
+    transition: border-color 0.2s;
+  }
+  .select-wrap select:focus { outline: none; border-color: #2ec4a5; }
+  .select-wrap::after {
+    content: '▼'; position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+    font-size: 10px; color: #999; pointer-events: none;
+  }
+
+  /* メッセージ */
+  .msg {
+    font-size: 13px; font-weight: 600; text-align: center;
+    padding: 10px; border-radius: 8px; margin-bottom: 20px;
+    transition: all 0.3s;
+  }
+  .msg.warning { color: #e74c3c; background: #fef2f2; }
+  .msg.confirm { color: #2ec4a5; background: #f0faf7; }
+
+  /* ボタン */
+  .dialog-foot {
+    display: flex; justify-content: flex-end; gap: 8px;
+  }
+  .btn {
+    padding: 10px 24px; border-radius: 8px; font-size: 13px;
+    font-weight: 600; cursor: pointer; border: none; transition: all 0.15s;
+  }
+  .btn-back {
+    background: none; color: #2ec4a5; padding: 10px 12px;
+    margin-right: auto;
+  }
+  .btn-back:hover { background: #f0faf7; }
+  .btn-cancel { background: #f5f5f5; color: #666; }
+  .btn-cancel:hover { background: #eee; }
+  .btn-primary { background: #2ec4a5; color: #fff; }
+  .btn-primary:hover { background: #27b098; }
+  .btn-primary:disabled { background: #ccc; cursor: not-allowed; }
+
+  /* ===== 再更新モーダル ===== */
+  .modal-update {
+    width: 520px; max-height: 85vh; display: flex; flex-direction: column;
+  }
+  .modal-head { padding: 24px 24px 16px; flex-shrink: 0; }
+  .modal-title { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+  .modal-title h3 { font-size: 16px; font-weight: 700; }
+  .modal-title .sub { font-size: 12px; color: #888; margin-top: 4px; }
+  .close-btn { background: none; border: none; font-size: 20px; color: #aaa; cursor: pointer; line-height: 1; }
+  .close-btn:hover { color: #666; }
+
+  .new-default { background: #f0faf7; border-radius: 8px; padding: 12px 16px; margin-bottom: 12px; }
+  .new-default .label { font-size: 12px; color: #666; font-weight: 600; }
+  .new-default .values { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+  .new-val { font-size: 16px; font-weight: 700; color: #2ec4a5; }
+
+  .count-info { font-size: 12px; color: #666; margin-bottom: 8px; }
+  .count-info .c-reg { color: #2ec4a5; font-weight: 600; }
+  .count-info .c-unreg { color: #e67e22; font-weight: 600; }
+
+  /* テーブル */
+  .month-table-wrap { flex: 1; overflow-y: auto; min-height: 0; padding: 0 24px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th {
+    position: sticky; top: 0; background: #fff;
+    text-align: left; font-size: 11px; color: #999; font-weight: 600;
+    padding: 6px 4px; border-bottom: 2px solid #eee; z-index: 1;
+  }
+  thead th:first-child { width: 32px; text-align: center; }
+  thead th:nth-child(3),
+  thead th:nth-child(4) { text-align: right; }
+
+  tbody tr { border-bottom: 1px solid #f0f0f0; cursor: pointer; transition: background 0.1s; }
+  tbody tr:hover { background: #fafbff; }
+  tbody tr.checked { background: #f7fdfa; }
+  tbody tr.registered { border-left: 3px solid #f0ad4e; background: #fffbf5; }
+  tbody tr.registered.checked { background: #fff7eb; }
+  tbody tr.registered .cur { color: #e67e22; }
+  tbody td { padding: 10px 4px; vertical-align: middle; }
+  tbody td:first-child { text-align: center; }
+  tbody td:nth-child(3),
+  tbody td:nth-child(4) { text-align: right; }
+
+  .cb-cell input { display: none; }
+  .cb-v {
+    width: 18px; height: 18px; border: 2px solid #ccc; border-radius: 4px;
+    display: inline-flex; align-items: center; justify-content: center;
+    transition: all 0.15s; cursor: pointer;
+  }
+  tr.checked .cb-v, .sel-all.checked .cb-v { background: #2ec4a5; border-color: #2ec4a5; }
+  tr.checked .cb-v::after, .sel-all.checked .cb-v::after { content: '\2713'; color: #fff; font-size: 11px; font-weight: 700; }
+
+  .sel-all {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 4px; border-bottom: 2px solid #eee; cursor: pointer;
+  }
+  .sel-all span { font-size: 12px; font-weight: 600; color: #555; }
+
+  .m-name { font-weight: 600; }
+  .tag-s { font-size: 9px; font-weight: 600; padding: 1px 5px; border-radius: 3px; margin-left: 4px; background: #fff0db; color: #e67e22; }
+  .cur { color: #666; }
+  .aft-apply { color: #2ec4a5; font-weight: 600; }
+  .aft-keep { color: #999; }
+
+  .modal-foot {
+    padding: 16px 24px; border-top: 1px solid #eee;
+    display: flex; justify-content: flex-end; gap: 8px; flex-shrink: 0;
+  }
+
+  /* ===== カード型リスト（再更新モーダル） ===== */
+  .month-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px; border-radius: 8px; cursor: pointer;
+    border: 1px solid #eee; margin-bottom: 6px; transition: all 0.15s;
+  }
+  .month-item:hover { background: #fafbff; }
+  .month-item.on { background: #f0faf7; border-color: #2ec4a5; }
+  .month-item.protected { background: #fffbf5; border-color: #f0ad4e; cursor: pointer; }
+  .month-item .mi-cb {
+    width: 20px; height: 20px; border: 2px solid #ccc; border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: all 0.15s;
+  }
+  .month-item.on .mi-cb { background: #2ec4a5; border-color: #2ec4a5; }
+  .month-item.on .mi-cb::after { content: '\2713'; color: #fff; font-size: 12px; font-weight: 700; }
+  .month-item.protected .mi-cb { background: #fff; border-color: #f0ad4e; }
+  .month-item.protected.on .mi-cb { background: #2ec4a5; border-color: #2ec4a5; }
+  .month-item.protected.on .mi-cb::after { content: '\2713'; color: #fff; font-size: 12px; font-weight: 700; }
+  .month-item.protected.on { border-color: #2ec4a5; background: #f0faf7; }
+  .mi-label { font-size: 14px; font-weight: 600; min-width: 36px; }
+  .mi-info { flex: 1; text-align: right; }
+  .mi-amount { font-size: 13px; color: #2ec4a5; font-weight: 600; }
+  .month-item.protected .mi-amount { color: #e67e22; }
+  .mi-tag { font-size: 9px; color: #e67e22; font-weight: 600; background: #fff0db; padding: 1px 5px; border-radius: 3px; margin-left: 6px; }
+  .mi-status { font-size: 10px; color: #999; }
+
+  /* 注釈 */
+  .note {
+    position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+    background: #333; color: #fff; padding: 10px 20px; border-radius: 8px;
+    font-size: 12px; z-index: 3000; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  }
+  .note strong { color: #2ec4a5; }
+</style>
+</head>
+<body>
+
+<div class="demo-tabs">
+  <button class="demo-tab active" onclick="showMode('initial')">1. 初回登録時</button>
+  <button class="demo-tab" onclick="showMode('update-no-monthly')">2. 再更新（単月なし）</button>
+  <button class="demo-tab" onclick="showMode('update')">3. 再更新（単月あり）</button>
+</div>
+
+<div class="bg-page"></div>
+
+<!-- ===== モード1: 初回登録時 - プルダウン付き確認ダイアログ ===== -->
+<div class="overlay" id="modal-initial">
+  <div class="modal dialog">
+    <div class="dialog-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+        <polyline points="9 22 9 12 15 12 15 22"/>
+      </svg>
+    </div>
+    <h3>デフォルト計算額の適用</h3>
+    <div class="sub">賃料設定を各月に適用します</div>
+
+    <div class="condition-box">
+      <div class="label">賃料設定条件</div>
+      <div class="value">段階別歩合 / 最大値選択 / 固定¥180,532</div>
+      <div class="detail">最低保証 ¥800,000 / 対象率 50% / 適用開始日 2026-03-01</div>
+    </div>
+
+    <div class="select-group">
+      <label>予算開始月</label>
+      <div class="select-wrap">
+        <select id="start-month" onchange="onStartMonthChange()">
+          <option value="">-- 選択してください --</option>
+          <!-- 適用開始日(3月)以降のみ表示 -->
+          <option value="3">3月</option>
+          <option value="4">4月</option>
+          <option value="5">5月</option>
+          <option value="6">6月</option>
+          <option value="7">7月</option>
+          <option value="8">8月</option>
+          <option value="9">9月</option>
+          <option value="10">10月</option>
+          <option value="11">11月</option>
+          <option value="12">12月</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="msg warning" id="init-msg">予算開始月を選択してください</div>
+
+    <div class="dialog-foot">
+      <button class="btn btn-back">← 費用設定に戻る</button>
+      <button class="btn btn-cancel">キャンセル</button>
+      <button class="btn btn-primary" id="init-apply-btn" onclick="onApply()">適用する</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== モード2a: 再更新時（単月設定なし） - ダイアログ ===== -->
+<div class="overlay" id="modal-update-no-monthly" style="display:none">
+  <div class="modal dialog">
+    <div class="dialog-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+        <polyline points="9 22 9 12 15 12 15 22"/>
+      </svg>
+    </div>
+    <h3>デフォルト計算額の更新適用</h3>
+    <div class="sub">賃料設定を更新し、各月に適用します</div>
+
+    <div class="condition-box">
+      <div class="label">新しいデフォルト計算額</div>
+      <div class="value" style="font-size:18px">¥800,000</div>
+      <div class="detail">段階別歩合 / 最大値選択 / 固定¥180,532 / 最低保証 ¥800,000</div>
+    </div>
+
+    <div class="select-group">
+      <label>予算開始月</label>
+      <div class="select-wrap">
+        <select id="upd-no-start-month" onchange="onUpdNoStartMonthChange()">
+          <option value="3" selected>3月</option>
+          <option value="4">4月</option>
+          <option value="5">5月</option>
+          <option value="6">6月</option>
+          <option value="7">7月</option>
+          <option value="8">8月</option>
+          <option value="9">9月</option>
+          <option value="10">10月</option>
+          <option value="11">11月</option>
+          <option value="12">12月</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="msg confirm" id="upd-no-msg">3月〜12月にデフォルト計算額を適用します</div>
+
+    <div class="dialog-foot">
+      <button class="btn btn-back">← 費用設定に戻る</button>
+      <button class="btn btn-cancel">キャンセル</button>
+      <button class="btn btn-primary" onclick="alert('デフォルト計算額を更新適用しました')">適用する</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== モード2b: 再更新時（単月設定あり） - モーダル ===== -->
+<div class="overlay" id="modal-update" style="display:none">
+  <div class="modal modal-update" style="width:460px">
+    <div class="modal-head" style="padding:24px 24px 12px">
+      <div class="modal-title">
+        <div>
+          <h3>デフォルト計算額の適用確認</h3>
+          <div class="sub">各月の設定を活かすか、デフォルト計算額で上書きするか選択してください。</div>
+        </div>
+        <button class="close-btn">&times;</button>
+      </div>
+
+      <div style="background:#fff5eb;border:1px solid #f0ad4e;border-radius:8px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:8px">
+        <span style="font-size:16px">⚠</span>
+        <span style="font-size:13px;font-weight:600;color:#b8860b">単月地代家賃の登録が <span id="upd-reg-count" style="color:#e67e22;font-size:15px">2</span> 件あります</span>
+      </div>
+
+      <div class="condition-box" style="margin-bottom:16px">
+        <div class="label">新しいデフォルト計算額</div>
+        <div class="value" style="font-size:18px">¥800,000</div>
+      </div>
+
+      <div class="select-group" style="margin-bottom:12px">
+        <label>予算開始月</label>
+        <div class="select-wrap">
+          <select id="upd-start-month" onchange="onUpdStartMonthChange()">
+            <option value="3" selected>3月</option>
+            <option value="4">4月</option>
+            <option value="5">5月</option>
+            <option value="6">6月</option>
+            <option value="7">7月</option>
+            <option value="8">8月</option>
+            <option value="9">9月</option>
+            <option value="10">10月</option>
+            <option value="11">11月</option>
+            <option value="12">12月</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="month-list-wrap" style="flex:1;overflow-y:auto;padding:0 24px 8px;max-height:340px">
+      <div id="month-list-upd"></div>
+    </div>
+
+    <div class="modal-foot">
+      <button class="btn btn-back">← 費用設定に戻る</button>
+      <button class="btn btn-cancel">キャンセル</button>
+      <button class="btn btn-primary" onclick="alert('賃料設定を更新しました')">反映する</button>
+    </div>
+  </div>
+</div>
+
+<div class="note">
+  <strong>出し分け条件:</strong> 初回登録 → ダイアログ ／ 再更新+単月設定0件 → ダイアログ ／ 再更新+単月設定1件以上 → モーダル（件数表示）
+</div>
+
+<script>
+// ===== 初回ダイアログ =====
+let startMonthSelected = false;
+
+function onStartMonthChange() {
+  const sel = document.getElementById('start-month');
+  const msg = document.getElementById('init-msg');
+  const m = sel.value;
+
+  if (!m) {
+    msg.className = 'msg warning';
+    msg.textContent = '予算開始月を選択してください';
+    startMonthSelected = false;
+  } else {
+    msg.className = 'msg confirm';
+    msg.textContent = m + '月〜12月にデフォルト計算額を適用します';
+    startMonthSelected = true;
+  }
+}
+
+function onApply() {
+  if (!startMonthSelected) {
+    const msg = document.getElementById('init-msg');
+    msg.className = 'msg warning';
+    msg.innerHTML = '<strong>⚠ 予算開始月が選択されていません。</strong><br>予算開始月を選択してから適用してください。';
+    // プルダウンをハイライト
+    const sel = document.getElementById('start-month');
+    sel.style.borderColor = '#e74c3c';
+    sel.style.boxShadow = '0 0 0 3px rgba(231, 76, 60, 0.15)';
+    sel.focus();
+    setTimeout(() => {
+      sel.style.borderColor = '#e0e0e0';
+      sel.style.boxShadow = 'none';
+    }, 3000);
+    return;
+  }
+  const m = document.getElementById('start-month').value;
+  alert(m + '月〜12月にデフォルト計算額を適用しました');
+}
+
+// ===== 再更新モーダル =====
+// 全月データ（1〜12月）、初回設定で予算開始月=3月が設定済み
+let updStartMonth = 3; // 初回で設定された予算開始月
+const allMonths = [1,2,3,4,5,6,7,8,9,10,11,12];
+const registered = { 3: 555555, 5: 750000 };
+const monthlyDefault = {
+  1: 800000, 2: 800000, 3: 800000, 4: 970000, 5: 800000, 6: 820000,
+  7: 900000, 8: 950000, 9: 830000, 10: 800000, 11: 860000, 12: 920000
+};
+const oldValues = {
+  1: 0, 2: 0, 3: 555555, 4: 800000, 5: 750000, 6: 800000,
+  7: 800000, 8: 800000, 9: 0, 10: 0, 11: 0, 12: 0
+};
+
+const fmt = n => n === null || n === undefined || n === 0 ? '-' : '¥' + n.toLocaleString();
+
+function getVisibleMonths() {
+  return allMonths.filter(m => m >= updStartMonth);
+}
+
+function onUpdStartMonthChange() {
+  updStartMonth = parseInt(document.getElementById('upd-start-month').value);
+  build();
+}
+
+function build() {
+  const list = document.getElementById('month-list-upd');
+  list.innerHTML = '';
+  const visibleMonths = getVisibleMonths();
+
+  let regCount = 0;
+  visibleMonths.forEach(m => {
+    const isReg = registered.hasOwnProperty(m);
+    if (isReg) regCount++;
+    const newVal = monthlyDefault[m];
+    const curVal = oldValues[m];
+    const div = document.createElement('div');
+    div.id = 'upd-r-' + m;
+    div.dataset.month = m;
+    div.dataset.reg = isReg ? '1' : '0';
+
+    if (isReg) {
+      div.className = 'month-item protected';
+      div.onclick = () => toggleRow(m);
+      div.innerHTML = `
+        <div class="mi-cb"></div>
+        <input type="checkbox" id="upd-cb-${m}" style="display:none">
+        <div class="mi-label">${m}月</div>
+        <div class="mi-info">
+          <span class="mi-amount" id="upd-amt-${m}">${fmt(curVal)}</span>
+          <span class="mi-tag">単月設定済</span>
+          <div class="mi-status" id="upd-st-${m}">→ 単月設定を維持</div>
+        </div>`;
+    } else {
+      div.className = 'month-item on';
+      div.onclick = () => toggleRow(m);
+      div.innerHTML = `
+        <div class="mi-cb"></div>
+        <input type="checkbox" id="upd-cb-${m}" checked style="display:none">
+        <div class="mi-label">${m}月</div>
+        <div class="mi-info">
+          <span class="mi-amount" id="upd-amt-${m}">${fmt(newVal)}</span>
+          <div class="mi-status" id="upd-st-${m}">→ デフォルト適用</div>
+        </div>`;
+    }
+    list.appendChild(div);
+  });
+  document.getElementById('upd-reg-count').textContent = regCount;
+}
+
+function toggleRow(m) {
+  const cb = document.getElementById('upd-cb-' + m);
+  if (!cb) return;
+  cb.checked = !cb.checked;
+  updateRowDisplay(m);
+}
+
+function updateRowDisplay(m) {
+  const cb = document.getElementById('upd-cb-' + m);
+  if (!cb) return;
+  const div = document.getElementById('upd-r-' + m);
+  const amt = document.getElementById('upd-amt-' + m);
+  const st = document.getElementById('upd-st-' + m);
+  const isReg = div.dataset.reg === '1';
+  const newVal = monthlyDefault[m];
+  const curVal = oldValues[m];
+
+  if (cb.checked) {
+    div.classList.add('on');
+    amt.textContent = fmt(newVal);
+    amt.style.color = '#2ec4a5';
+    st.textContent = isReg ? '→ デフォルトで上書き' : '→ デフォルト適用';
+  } else {
+    div.classList.remove('on');
+    amt.textContent = curVal ? fmt(curVal) : '-';
+    amt.style.color = isReg ? '#e67e22' : '#999';
+    st.textContent = isReg ? '→ 単月設定を維持' : '→ 変更なし';
+  }
+}
+
+// ===== 再更新（単月なし）ダイアログ =====
+function onUpdNoStartMonthChange() {
+  const m = document.getElementById('upd-no-start-month').value;
+  const msg = document.getElementById('upd-no-msg');
+  msg.className = 'msg confirm';
+  msg.textContent = m + '月〜12月にデフォルト計算額を適用します';
+}
+
+// ===== 表示切替 =====
+function showMode(mode) {
+  document.getElementById('modal-initial').style.display = mode === 'initial' ? 'flex' : 'none';
+  document.getElementById('modal-update-no-monthly').style.display = mode === 'update-no-monthly' ? 'flex' : 'none';
+  document.getElementById('modal-update').style.display = mode === 'update' ? 'flex' : 'none';
+  document.querySelectorAll('.demo-tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+build();
+</script>
+</body>
+</html>
