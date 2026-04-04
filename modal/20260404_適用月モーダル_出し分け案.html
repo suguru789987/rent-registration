@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>地代家賃 適用確認 - 初回/再更新 出し分けモック</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif;
+    background: #f5f6fa; color: #333;
+  }
+  .bg-page { max-width: 1100px; margin: 0 auto; padding: 32px 40px; background: #fff; min-height: 100vh; opacity: 0.3; }
+  .overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+    display: flex; align-items: center; justify-content: center; z-index: 1000;
+  }
+
+  /* ===== デモタブ ===== */
+  .demo-tabs {
+    position: fixed; top: 12px; left: 50%; transform: translateX(-50%);
+    z-index: 2000; display: flex; gap: 4px; background: #fff;
+    border-radius: 8px; padding: 4px; box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+  }
+  .demo-tab {
+    padding: 8px 16px; border-radius: 6px; font-size: 13px;
+    font-weight: 600; cursor: pointer; border: none; background: none; color: #888;
+  }
+  .demo-tab.active { background: #2ec4a5; color: #fff; }
+
+  /* ===== 共通モーダル ===== */
+  .modal {
+    background: #fff; border-radius: 12px;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.2);
+  }
+
+  /* ===== 初回登録ダイアログ ===== */
+  .dialog {
+    width: 440px; padding: 28px 32px;
+  }
+  .dialog-icon {
+    width: 48px; height: 48px; background: #f0faf7; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 16px;
+  }
+  .dialog-icon svg { width: 24px; height: 24px; color: #2ec4a5; }
+  .dialog h3 {
+    font-size: 17px; font-weight: 700; text-align: center; margin-bottom: 4px;
+  }
+  .dialog .sub {
+    font-size: 12px; color: #888; text-align: center; margin-bottom: 20px;
+  }
+
+  /* 賃料設定条件 */
+  .condition-box {
+    background: #f0faf7; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px;
+  }
+  .condition-box .label { font-size: 11px; color: #888; font-weight: 600; margin-bottom: 4px; }
+  .condition-box .value { font-size: 13px; color: #2ec4a5; font-weight: 600; }
+  .condition-box .detail { font-size: 11px; color: #666; margin-top: 4px; }
+
+  /* プルダウン */
+  .select-group { margin-bottom: 16px; }
+  .select-group label {
+    font-size: 12px; font-weight: 600; color: #555; display: block; margin-bottom: 6px;
+  }
+  .select-wrap {
+    position: relative; display: inline-block; width: 100%;
+  }
+  .select-wrap select {
+    width: 100%; padding: 10px 36px 10px 14px; font-size: 14px;
+    border: 2px solid #e0e0e0; border-radius: 8px; background: #fff;
+    appearance: none; cursor: pointer; color: #333; font-weight: 500;
+    transition: border-color 0.2s;
+  }
+  .select-wrap select:focus { outline: none; border-color: #2ec4a5; }
+  .select-wrap::after {
+    content: '▼'; position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+    font-size: 10px; color: #999; pointer-events: none;
+  }
+
+  /* メッセージ */
+  .msg {
+    font-size: 13px; font-weight: 600; text-align: center;
+    padding: 10px; border-radius: 8px; margin-bottom: 20px;
+    transition: all 0.3s;
+  }
+  .msg.warning { color: #e74c3c; background: #fef2f2; }
+  .msg.confirm { color: #2ec4a5; background: #f0faf7; }
+
+  /* ボタン */
+  .dialog-foot {
+    display: flex; justify-content: flex-end; gap: 8px;
+  }
+  .btn {
+    padding: 10px 24px; border-radius: 8px; font-size: 13px;
+    font-weight: 600; cursor: pointer; border: none; transition: all 0.15s;
+  }
+  .btn-back {
+    background: none; color: #2ec4a5; padding: 10px 12px;
+    margin-right: auto;
+  }
+  .btn-back:hover { background: #f0faf7; }
+  .btn-cancel { background: #f5f5f5; color: #666; }
+  .btn-cancel:hover { background: #eee; }
+  .btn-primary { background: #2ec4a5; color: #fff; }
+  .btn-primary:hover { background: #27b098; }
+  .btn-primary:disabled { background: #ccc; cursor: not-allowed; }
+
+  /* ===== 再更新モーダル ===== */
+  .modal-update {
+    width: 520px; max-height: 85vh; display: flex; flex-direction: column;
+  }
+  .modal-head { padding: 24px 24px 16px; flex-shrink: 0; }
+  .modal-title { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+  .modal-title h3 { font-size: 16px; font-weight: 700; }
+  .modal-title .sub { font-size: 12px; color: #888; margin-top: 4px; }
+  .close-btn { background: none; border: none; font-size: 20px; color: #aaa; cursor: pointer; line-height: 1; }
+  .close-btn:hover { color: #666; }
+
+  .new-default { background: #f0faf7; border-radius: 8px; padding: 12px 16px; margin-bottom: 12px; }
+  .new-default .label { font-size: 12px; color: #666; font-weight: 600; }
+  .new-default .values { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+  .new-val { font-size: 16px; font-weight: 700; color: #2ec4a5; }
+
+  .count-info { font-size: 12px; color: #666; margin-bottom: 8px; }
+  .count-info .c-reg { color: #2ec4a5; font-weight: 600; }
+  .count-info .c-unreg { color: #e67e22; font-weight: 600; }
+
+  /* テーブル */
+  .month-table-wrap { flex: 1; overflow-y: auto; min-height: 0; padding: 0 24px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th {
+    position: sticky; top: 0; background: #fff;
+    text-align: left; font-size: 11px; color: #999; font-weight: 600;
+    padding: 6px 4px; border-bottom: 2px solid #eee; z-index: 1;
+  }
+  thead th:first-child { width: 32px; text-align: center; }
+  thead th:nth-child(3),
+  thead th:nth-child(4) { text-align: right; }
+
+  tbody tr { border-bottom: 1px solid #f0f0f0; cursor: pointer; transition: background 0.1s; }
+  tbody tr:hover { background: #fafbff; }
+  tbody tr.checked { background: #f7fdfa; }
+  tbody tr.registered { border-left: 3px solid #f0ad4e; background: #fffbf5; }
+  tbody tr.registered.checked { background: #fff7eb; }
+  tbody tr.registered .cur { color: #e67e22; }
+  tbody td { padding: 10px 4px; vertical-align: middle; }
+  tbody td:first-child { text-align: center; }
+  tbody td:nth-child(3),
+  tbody td:nth-child(4) { text-align: right; }
+
+  .cb-cell input { display: none; }
+  .cb-v {
+    width: 18px; height: 18px; border: 2px solid #ccc; border-radius: 4px;
+    display: inline-flex; align-items: center; justify-content: center;
+    transition: all 0.15s; cursor: pointer;
+  }
+  tr.checked .cb-v, .sel-all.checked .cb-v { background: #2ec4a5; border-color: #2ec4a5; }
+  tr.checked .cb-v::after, .sel-all.checked .cb-v::after { content: '\2713'; color: #fff; font-size: 11px; font-weight: 700; }
+
+  .sel-all {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 4px; border-bottom: 2px solid #eee; cursor: pointer;
+  }
+  .sel-all span { font-size: 12px; font-weight: 600; color: #555; }
+
+  .m-name { font-weight: 600; }
+  .tag-s { font-size: 9px; font-weight: 600; padding: 1px 5px; border-radius: 3px; margin-left: 4px; background: #fff0db; color: #e67e22; }
+  .cur { color: #666; }
+  .aft-apply { color: #2ec4a5; font-weight: 600; }
+  .aft-keep { color: #999; }
+
+  .modal-foot {
+    padding: 16px 24px; border-top: 1px solid #eee;
+    display: flex; justify-content: flex-end; gap: 8px; flex-shrink: 0;
+  }
+
+  /* 注釈 */
+  .note {
+    position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+    background: #333; color: #fff; padding: 10px 20px; border-radius: 8px;
+    font-size: 12px; z-index: 3000; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  }
+  .note strong { color: #2ec4a5; }
+</style>
+</head>
+<body>
+
+<div class="demo-tabs">
+  <button class="demo-tab active" onclick="showMode('initial')">1. 初回登録時（ダイアログ）</button>
+  <button class="demo-tab" onclick="showMode('update')">2. 再更新時（モーダル）</button>
+</div>
+
+<div class="bg-page"></div>
+
+<!-- ===== モード1: 初回登録時 - プルダウン付き確認ダイアログ ===== -->
+<div class="overlay" id="modal-initial">
+  <div class="modal dialog">
+    <div class="dialog-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+        <polyline points="9 22 9 12 15 12 15 22"/>
+      </svg>
+    </div>
+    <h3>デフォルト計算額の適用</h3>
+    <div class="sub">賃料設定を各月に適用します</div>
+
+    <div class="condition-box">
+      <div class="label">賃料設定条件</div>
+      <div class="value">段階別歩合 / 最大値選択 / 固定¥180,532</div>
+      <div class="detail">最低保証 ¥800,000 / 対象率 50% / 適用開始日 2026-03-01</div>
+    </div>
+
+    <div class="select-group">
+      <label>予算開始月</label>
+      <div class="select-wrap">
+        <select id="start-month" onchange="onStartMonthChange()">
+          <option value="">-- 選択してください --</option>
+          <!-- 適用開始日(3月)以降のみ表示 -->
+          <option value="3">3月</option>
+          <option value="4">4月</option>
+          <option value="5">5月</option>
+          <option value="6">6月</option>
+          <option value="7">7月</option>
+          <option value="8">8月</option>
+          <option value="9">9月</option>
+          <option value="10">10月</option>
+          <option value="11">11月</option>
+          <option value="12">12月</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="msg warning" id="init-msg">予算開始月を選択してください</div>
+
+    <div class="dialog-foot">
+      <button class="btn btn-back">← 費用設定に戻る</button>
+      <button class="btn btn-cancel">キャンセル</button>
+      <button class="btn btn-primary" id="init-apply-btn" onclick="onApply()">適用する</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== モード2: 再更新時 - 適用月設定モーダル（現行ベース） ===== -->
+<div class="overlay" id="modal-update" style="display:none">
+  <div class="modal modal-update">
+    <div class="modal-head">
+      <div class="modal-title">
+        <div>
+          <h3>地代家賃 月別設定: 2026年</h3>
+          <div class="sub">賃料設定の更新内容を確認してください</div>
+        </div>
+        <button class="close-btn">&times;</button>
+      </div>
+      <div class="new-default">
+        <div class="label">新しいデフォルト額</div>
+        <div class="values"><span class="new-val">¥800,000</span></div>
+      </div>
+      <div class="select-group" style="margin-bottom:12px">
+        <label>予算開始月 <span style="font-size:10px;color:#999">（初回設定から引き継ぎ・変更可能）</span></label>
+        <div class="select-wrap">
+          <select id="upd-start-month" onchange="onUpdStartMonthChange()">
+            <option value="3" selected>3月</option>
+            <option value="4">4月</option>
+            <option value="5">5月</option>
+            <option value="6">6月</option>
+            <option value="7">7月</option>
+            <option value="8">8月</option>
+            <option value="9">9月</option>
+            <option value="10">10月</option>
+            <option value="11">11月</option>
+            <option value="12">12月</option>
+          </select>
+        </div>
+      </div>
+      <div class="count-info"><span class="c-reg" id="upd-reg-count">登録済 2件</span>　<span class="c-unreg" id="upd-unreg-count">未登録 4件</span></div>
+      <div class="sel-all" id="selall-upd" onclick="toggleAll('upd')">
+        <div class="cb-v"></div>
+        <span>すべて選択　<span id="upd-count" style="color:#999">4件選択中</span></span>
+      </div>
+    </div>
+    <div class="month-table-wrap">
+      <table><thead><tr><th></th><th>月</th><th>現在</th><th>更新後</th></tr></thead>
+      <tbody id="tbody-upd"></tbody></table>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-back">← 費用設定に戻る</button>
+      <button class="btn btn-cancel">キャンセル</button>
+      <button class="btn btn-primary" onclick="alert('賃料設定を更新しました')">反映する</button>
+    </div>
+  </div>
+</div>
+
+<div class="note">
+  <strong>出し分け条件:</strong> 単月設定が0件 → 初回ダイアログ ／ 単月設定が1件以上 → 再更新モーダル
+</div>
+
+<script>
+// ===== 初回ダイアログ =====
+let startMonthSelected = false;
+
+function onStartMonthChange() {
+  const sel = document.getElementById('start-month');
+  const msg = document.getElementById('init-msg');
+  const m = sel.value;
+
+  if (!m) {
+    msg.className = 'msg warning';
+    msg.textContent = '予算開始月を選択してください';
+    startMonthSelected = false;
+  } else {
+    msg.className = 'msg confirm';
+    msg.textContent = m + '月〜12月にデフォルト計算額を適用します';
+    startMonthSelected = true;
+  }
+}
+
+function onApply() {
+  if (!startMonthSelected) {
+    const msg = document.getElementById('init-msg');
+    msg.className = 'msg warning';
+    msg.innerHTML = '<strong>⚠ 予算開始月が選択されていません。</strong><br>予算開始月を選択してから適用してください。';
+    // プルダウンをハイライト
+    const sel = document.getElementById('start-month');
+    sel.style.borderColor = '#e74c3c';
+    sel.style.boxShadow = '0 0 0 3px rgba(231, 76, 60, 0.15)';
+    sel.focus();
+    setTimeout(() => {
+      sel.style.borderColor = '#e0e0e0';
+      sel.style.boxShadow = 'none';
+    }, 3000);
+    return;
+  }
+  const m = document.getElementById('start-month').value;
+  alert(m + '月〜12月にデフォルト計算額を適用しました');
+}
+
+// ===== 再更新モーダル =====
+// 全月データ（1〜12月）、初回設定で予算開始月=3月が設定済み
+let updStartMonth = 3; // 初回で設定された予算開始月
+const allMonths = [1,2,3,4,5,6,7,8,9,10,11,12];
+const registered = { 3: 555555, 5: 750000 };
+const monthlyDefault = {
+  1: 800000, 2: 800000, 3: 800000, 4: 970000, 5: 800000, 6: 820000,
+  7: 900000, 8: 950000, 9: 830000, 10: 800000, 11: 860000, 12: 920000
+};
+const oldValues = {
+  1: 0, 2: 0, 3: 555555, 4: 800000, 5: 750000, 6: 800000,
+  7: 800000, 8: 800000, 9: 0, 10: 0, 11: 0, 12: 0
+};
+
+const fmt = n => n === null || n === undefined || n === 0 ? '-' : '¥' + n.toLocaleString();
+
+function getVisibleMonths() {
+  return allMonths.filter(m => m >= updStartMonth);
+}
+
+function onUpdStartMonthChange() {
+  updStartMonth = parseInt(document.getElementById('upd-start-month').value);
+  build();
+}
+
+function build() {
+  const tbody = document.getElementById('tbody-upd');
+  tbody.innerHTML = '';
+  const visibleMonths = getVisibleMonths();
+  let regCount = 0;
+  let unregCount = 0;
+
+  visibleMonths.forEach(m => {
+    const isReg = registered.hasOwnProperty(m);
+    if (isReg) regCount++; else unregCount++;
+    const curVal = oldValues[m];
+    const newVal = monthlyDefault[m];
+    const defaultChecked = !isReg;
+    const tr = document.createElement('tr');
+    tr.className = (defaultChecked ? 'checked' : '') + (isReg ? ' registered' : '');
+    tr.id = 'upd-r-' + m;
+    tr.dataset.month = m;
+    tr.dataset.reg = isReg ? '1' : '0';
+    tr.dataset.cur = curVal;
+    tr.dataset.newval = newVal;
+    tr.onclick = () => toggleRow(m);
+
+    const srcLabel = isReg ? '単月設定' : 'デフォルト計算額';
+    const srcColor = isReg ? '#e67e22' : '#999';
+    const aftClass = defaultChecked ? 'aft-apply' : 'aft-keep';
+    const aftText = defaultChecked
+      ? fmt(newVal)
+      : fmt(curVal) + '<br><span style="font-size:10px">継続</span>';
+
+    tr.innerHTML = `
+      <td class="cb-cell"><input type="checkbox" id="upd-cb-${m}" ${defaultChecked ? 'checked' : ''}><div class="cb-v"></div></td>
+      <td><span class="m-name">${m}月</span>${isReg ? '<span class="tag-s">単月設定</span>' : ''}</td>
+      <td class="cur">${fmt(curVal)}<br><span style="font-size:10px;color:${srcColor}">${srcLabel}</span></td>
+      <td id="upd-aft-${m}" class="${aftClass}">${aftText}</td>`;
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById('upd-reg-count').textContent = '登録済 ' + regCount + '件';
+  document.getElementById('upd-unreg-count').textContent = '未登録 ' + unregCount + '件';
+  updSelAll();
+  updateCount();
+}
+
+function toggleRow(m) {
+  const cb = document.getElementById('upd-cb-' + m);
+  cb.checked = !cb.checked;
+  updRow(m);
+  updSelAll();
+  updateCount();
+}
+
+function updRow(m) {
+  const cb = document.getElementById('upd-cb-' + m);
+  const tr = document.getElementById('upd-r-' + m);
+  const aft = document.getElementById('upd-aft-' + m);
+  const curVal = parseInt(tr.dataset.cur);
+  const newVal = parseInt(tr.dataset.newval);
+  if (cb.checked) {
+    tr.classList.add('checked');
+    aft.className = 'aft-apply';
+    aft.innerHTML = fmt(newVal);
+  } else {
+    tr.classList.remove('checked');
+    aft.className = 'aft-keep';
+    aft.innerHTML = fmt(curVal) + '<br><span style="font-size:10px">継続</span>';
+  }
+}
+
+function toggleAll(mode) {
+  const sa = document.getElementById('selall-upd');
+  const next = !sa.classList.contains('checked');
+  next ? sa.classList.add('checked') : sa.classList.remove('checked');
+  getVisibleMonths().forEach(m => {
+    document.getElementById('upd-cb-' + m).checked = next;
+    updRow(m);
+  });
+  updateCount();
+}
+
+function updSelAll() {
+  const visible = getVisibleMonths();
+  const all = visible.length > 0 && visible.every(m => document.getElementById('upd-cb-' + m).checked);
+  const sa = document.getElementById('selall-upd');
+  all ? sa.classList.add('checked') : sa.classList.remove('checked');
+}
+
+function updateCount() {
+  const count = getVisibleMonths().filter(m => document.getElementById('upd-cb-' + m).checked).length;
+  document.getElementById('upd-count').textContent = count + '件選択中';
+}
+
+// ===== 表示切替 =====
+function showMode(mode) {
+  document.getElementById('modal-initial').style.display = mode === 'initial' ? 'flex' : 'none';
+  document.getElementById('modal-update').style.display = mode === 'update' ? 'flex' : 'none';
+  document.querySelectorAll('.demo-tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+build();
+</script>
+</body>
+</html>
