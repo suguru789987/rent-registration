@@ -170,7 +170,7 @@
 
       <div style="background:#fff5eb;border:1px solid #f0ad4e;border-radius:8px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:8px">
         <span style="font-size:16px">⚠</span>
-        <span style="font-size:13px;font-weight:600;color:#b8860b">単月地代家賃の登録が <span id="upd-reg-count" style="color:#e67e22;font-size:15px">2</span> 件あります</span>
+        <span id="upd-reg-msg" style="font-size:13px;font-weight:600;color:#b8860b"></span>
       </div>
 
       <div class="condition-box" style="margin-bottom:12px">
@@ -261,7 +261,9 @@ function build() {
     list.appendChild(div);
   });
 
-  document.getElementById('upd-reg-count').textContent = regCount;
+  const regMonthNames = visibleMonths.filter(m => registered.hasOwnProperty(m)).map(m => m + '月');
+  const msg = '単月地代家賃の登録が ' + regMonthNames.join(' と ') + ' の ' + regCount + ' 件あります';
+  document.getElementById('upd-reg-msg').textContent = msg;
 }
 
 function toggleRow(m) {
