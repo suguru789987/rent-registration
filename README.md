@@ -5,6 +5,7 @@
 > **制作:** [@suguru789987](https://github.com/suguru789987) (PdM)
 > **担当範囲:** 業界構造モデリング(固定/変動/段階別歩合3型) / UIモック / 検証プラン18改訂 / 先出リリース+切り戻しプラン設計 / ヘルプページ差分管理
 > **ツール:** Claude Code / HTML / CSS / Markdown / TSV
+> **🌐 Live Demo:** https://suguru789987.github.io/rent-registration/
 
 ---
 
