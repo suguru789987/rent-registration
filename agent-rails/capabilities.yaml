@@ -1,0 +1,32 @@
+# 現行システム ケイパビリティ/状態モデル（③把握）
+# 由来: rent R-002, modal/20260403_適用月モーダル_予算開始月プルダウン暫定仕様.md
+# 役割: エージェントの「前提知識」。AIは現行プロダクトが何をできる/できないかを知らないため明示注入する
+version: 0
+status: poc  # 各値は 2026-03 暫定仕様時点の推定。現在の本番状態は要本人確認
+as_of: "2026-03"
+
+capabilities:
+  budget_period_setting:
+    available: false
+    detail: 予算期間設定機能は未リリース。終了月は12月固定で運用中
+    impact: 過去月・予算未設定月へのデフォルト適用リスクがある
+    workaround: 適用月モーダルに予算開始月プルダウン（開始月〜12月）で「蓋」をしている（暫定）
+    planned:
+      - Phase 1(済): 予算開始月プルダウン + 赤メッセージ
+      - Phase 2: 予算期間設定機能をリリース
+      - Phase 3: プルダウン削除 or 予算期間未設定時フォールバック
+
+  rent_override_monthly:
+    available: true
+    detail: 単月費用設定から地代家賃を月別上書き可能（direct / params）
+
+  tier_edit_monthly:
+    available: false
+    detail: 段階別歩合の段(tiers)は単月では変更不可
+
+# エージェントが行動前に確認すべき状態クエリ
+state_checks:
+  - id: budget_exists
+    question: 対象月に月次売上予算が存在するか
+    source: 月次予算設定
+    if_false: guardrails.yaml: no_apply_without_budget を発動

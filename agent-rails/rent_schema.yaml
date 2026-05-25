@@ -1,0 +1,54 @@
+# 地代家賃 ドメインオントロジー / スキーマ（グラウンディング層）
+# 由来: mock/spec.md §5(データモデル), §5-2(参照元), §9(表示条件)
+# 役割: エージェントが「賃料とは何か・どの属性を持つか・どこに事実を当てるか」を参照する真実源
+version: 0
+status: poc  # 検証雛形。要本人確認
+
+entity: 地代家賃 (rent)
+
+# 賃料体系（enum）— ④線引き: 現実の契約をこの3型に抽象化（rent R-004）
+rent_types:
+  - id: fixed            # 固定賃料
+    label: 固定賃料
+    params: [fixed_rent]
+  - id: variable         # 変動賃料
+    label: 変動賃料
+    params: [fixed_rent, commission_rate, threshold, sales_rate, min_guarantee]
+    condition_select: [合算, 最大値選択]   # 固定＋歩合 か MAX(固定,歩合) か
+  - id: tiered           # 段階別歩合
+    label: 段階別歩合
+    params: [fixed_rent, sales_rate, min_guarantee, tiers]
+    note: 段階(tiers)は単月では変更不可（mock/spec.md §9）
+
+# 属性定義（型と制約）— §8 バリデーション由来
+attributes:
+  fixed_rent:       { type: number, min: 0, unit: JPY }
+  commission_rate:  { type: number, min: 0, max: 100, unit: percent }
+  threshold:        { type: number, min: 0, unit: JPY, default: 0 }
+  sales_rate:       { type: number, min: 0, max: 100, unit: percent, default: 100 } # 売上歩合対象率
+  min_guarantee:    { type: number, min: 0, unit: JPY, default: 0 }                 # 最低保証額
+  tiers:            { type: list, item: { upper: number, rate: percent } }          # 段階別歩合の段
+  monthly_sales:    { type: number, min: 0, unit: JPY }                             # 月次売上(予算 or 実績)
+
+# 単月上書きモデル — §5-1
+override:
+  override_type: [direct, params, none]
+  direct_amount: { type: number, min: 0 }      # direct時
+  # params時: 上書き値 ?? デフォルト値（null=デフォルトにフォールバック）
+
+# 事実の参照元（=②照合のグラウンディング指示）— §5-2
+sources:
+  rent_type:        店舗情報 > 賃料設定
+  condition_select: 店舗情報 > 賃料設定
+  fixed_rent:       店舗情報 > 賃料設定
+  commission_rate:  店舗情報 > 賃料設定
+  threshold:        店舗情報 > 賃料設定
+  sales_rate:       店舗情報 > 賃料設定
+  min_guarantee:    店舗情報 > 賃料設定
+  tiers:            店舗情報 > 賃料設定
+  monthly_sales:    月次予算設定（予測時は予算、確定時は実績）
+
+# 取込/自動処理の対象外スコープ（④線引き）
+out_of_scope:
+  - 段階(tiers)の単月変更        # §9: 段階別歩合の段は単月では変更不可
+  - 予算未設定月へのデフォルト適用  # guardrails.yaml で禁止（rent R-002）

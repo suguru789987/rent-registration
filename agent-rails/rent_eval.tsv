@@ -1,0 +1,12 @@
+id	rent_type	override_type	monthly_sales	key_params	expected_output	検証観点	status
+E-01	variable	none	3000000	fixed=300000;comm=5%;thr=2000000;rate=100%;guar=0;合算	350000	合算: 固定+歩合 (300000+50000)	式から導出
+E-02	variable	none	3000000	fixed=300000;comm=5%;thr=2000000;rate=100%;guar=400000;最大値選択	400000	最低保証がバインド: MAX(MAX(300000,50000),400000)	式から導出
+E-03	variable	none	2000000	fixed=200000;comm=10%;thr=1000000;rate=80%;guar=0;合算	260000	売上歩合対象率80%: target=1600000	式から導出
+E-04	variable	direct	3000000	direct_amount=250000	250000	direct上書きは他パラメータを無視して最優先	式から導出
+E-05	fixed	none	9999999	fixed=280000;guar=0	280000	固定賃料は売上に依存しない	式から導出
+E-06	variable	params	3000000	override:comm=8%; default:fixed=300000;thr=2000000;rate=100%;合算	380000	params上書き: comm率のみ上書き、他はデフォルトにフォールバック	式から導出
+E-07	variable	none	1500000	fixed=300000;comm=5%;thr=2000000;rate=100%;guar=0;合算	300000	閾値未満は歩合0: MAX(1500000-2000000,0)=0	式から導出
+E-08	tiered	none	4000000	fixed=0;tiers=[2.4M:6%,5M:8%,∞:15%];rate=100%;guar=0	272000	段階別(marginal仮定): 144000+128000	要確認(段階方式)
+G-01	variable	none	(予算なし過去月)	-	BLOCK: no_apply_without_budget	予算未設定月への適用は禁止(rent R-002)	ポリシー検証
+G-02	tiered	params	-	段階(tiers)を単月変更しようとする	BLOCK: no_tier_edit_in_monthly	段階は単月変更不可(§9)	ポリシー検証
+G-03	variable	none	-	単月設定済みの月へ親設定値で上書き	ESCALATE: 二択提示	自動上書き禁止(rent R-005)	エスカレーション検証

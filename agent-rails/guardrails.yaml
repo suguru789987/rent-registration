@@ -1,0 +1,49 @@
+# ガードレール: 不変条件 + ポリシー + エスカレーション（④線引き / ⑤先読み）
+# 由来: mock/spec.md §8(バリデーション), rent R-002/R-003/R-004, 暫定仕様
+# 役割: エージェントの行動を縛る。違反は実行前にブロック or 人間にエスカレーション
+version: 0
+status: poc  # 要本人確認
+
+# ---- 入力バリデーション（§8）----
+input_invariants:
+  - field: direct_amount;   rule: ">= 0"
+  - field: fixed_rent;      rule: ">= 0"
+  - field: commission_rate; rule: "0..100"
+  - field: threshold;       rule: ">= 0"
+  - field: sales_rate;      rule: "0..100"
+  - field: min_guarantee;   rule: ">= 0"
+  - field: params_checked_but_empty; rule: "禁止（値を入れるかチェックを外す）"
+
+# ---- 出力不変条件 ----
+output_invariants:
+  - rent_amount >= 0
+  - rent_amount >= min_guarantee
+
+# ---- ポリシー（禁止行動）----
+policies:
+  no_apply_without_budget:        # rent R-002 / 暫定仕様の「蓋」を機械可読化
+    rule: 予算が存在しない月へデフォルト計算額を適用してはならない
+    check: capabilities.yaml:state_checks:budget_exists == false の月は適用禁止
+    on_violation: block
+    rationale: 予算期間設定機能が未リリースで、過去月・予算未設定月への誤適用が起きるため
+
+  no_tier_edit_in_monthly:        # mock/spec.md §9
+    rule: 段階別歩合の段(tiers)を単月上書きで変更してはならない
+    on_violation: block
+
+  end_month_fixed_dec:            # 暫定仕様
+    rule: 適用範囲の終了月は12月固定（予算期間機能リリースまで）
+    on_violation: block
+
+  no_silent_overwrite:            # rent R-005 / expense R-004（上書き衝突の先読み）
+    rule: 既存の単月設定や確定値を、確認なしに上書きしてはならない
+    on_violation: escalate
+
+# ---- 人間へのエスカレーション条件（⑤先読み / human-in-the-loop）----
+escalation:
+  - when: 単月設定済みの月に親設定の新しい値で上書きが発生しうる
+    action: ユーザーに「単月設定を維持 / デフォルトで上書き」の二択を提示（自動適用しない）
+  - when: 段階別歩合で売上が最上位段を超える等、過去に検証実績のない領域
+    action: 人間に確認を求める
+  - when: 計算結果がデフォルトから大きく乖離（例: ±50%超）
+    action: フラグを立てて人間レビューへ
