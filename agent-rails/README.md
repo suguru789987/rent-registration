@@ -24,13 +24,15 @@
 | ④ 決定論計算（演算分離） | LLMに算術させない | `calc_rent.tool.yaml` | `mock/spec.md §6 計算ロジック` |
 | ⑤ ポリシー/エスカレーション（⑤先読み） | リスク時に止める/人に渡す | `guardrails.yaml` の `policies` | rent R-002/R-003、暫定仕様 |
 | ⑥ 評価/クリティック（①却下） | 出力を現実基準で採点 | `rent_eval.tsv` + `critic_rubric.md` | `verification/` + `JUDGMENT_LOG.md` |
+| ⑦ 実行状態機械（ワークフロー） | 中断・再開・スキップ・上書きガード・冪等性 | `workflow.yaml` | timerecord `save_draft_spec_v2.tsv` の状態遷移設計 |
 
 ## 使い方（エージェント開発時の参照イメージ）
 
 1. エージェントは賃料額を **自分で計算しない**。`calc_rent` ツール（決定論）を呼ぶ
 2. 行動前に `guardrails.yaml` の invariants を満たすか検証（過去月誤適用などを禁止）
 3. `capabilities.yaml` を前提知識として読み、「予算期間機能はまだ無い」を知った上で振る舞う
-4. 出力は `rent_eval.tsv` のゴールデンセットと `critic_rubric.md` で自動採点
+4. マルチステップ実行は `workflow.yaml` の状態機械に従う（tentative→commit_gate→committed、中断時は resume_contract で再開、未分類状態は escalate）
+5. 出力は `rent_eval.tsv` のゴールデンセットと `critic_rubric.md` で自動採点
 
 ## 要確認ポイント（推測を含む箇所）
 

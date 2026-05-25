@@ -1,0 +1,78 @@
+# 実行状態機械レール（第7層: エージェント・ワークフロー / 実行セマンティクス）
+# 由来: rakmy-timerecord-import-spec の save_draft_spec_v2.tsv / integrated_save_draft_spec.tsv
+#       の状態遷移設計を、地代家賃ドメインのエージェント実行に翻訳したもの
+# 役割: マルチステップのエージェントが「中断・再開・スキップ・上書きガード・冪等性」を
+#       安全に扱うための実行レール。ドメイン/計算/制約(他レール)とは別の "how to run" を定義
+version: 0
+status: poc  # 検証雛形。要本人確認
+
+# 対象タスク例: 「店舗の賃料設定と月次売上から、開始月〜12月の地代家賃を月別に算出・適用する」
+task: apply_monthly_rent
+
+# ---- 状態定義（A-5: 成功/失敗の二値でなく明示的な非成功終端を持つ）----
+states:
+  pending:    対象月だが未処理
+  tentative:  calc_rent でプレビュー算出済み・未確定（= 下書き b0Draft 相当）
+  committed:  対象月に賃料を確定適用済み（= done 相当・不可逆）
+  skipped:    意図的に処理しない（例: 予算なし月）
+  excluded:   ユーザーが対象から除外（= プレビュー行の除外相当）
+  escalated:  人間判断待ち（上書き衝突・未検証領域など）
+
+# ---- 許可された遷移（A-1: 線形進行＋前提条件。done1→4 の必須順序に相当）----
+transitions:
+  - from: pending;   to: tentative;  via: calc_rent;        guard: 賃料パラメータが解決可能
+  - from: tentative; to: committed;  via: commit_gate;      guard: commit_gates を全通過
+  - from: pending;   to: skipped;    via: recovery;         guard: budget_exists == false
+  - from: tentative; to: escalated;  via: recovery;         guard: overwrite_conflict or unverified_range
+  - from: pending;   to: excluded;   via: user_action
+  - from: escalated; to: tentative;  via: human_decision;   guard: 人間が「適用」を選択
+  - from: escalated; to: skipped;    via: human_decision;   guard: 人間が「維持/除外」を選択
+  # committed は終端（不可逆）。再処理は明示的な再オープンのみ
+
+# ---- チェックポイント（A-1/A-4: 2層ストレージ。揮発作業 vs 永続進行）----
+checkpoints:
+  working_memory:        # = sessionStorage.b0Draft 相当（揮発）
+    scope: ephemeral
+    holds: [現在処理中の月, tentative計算結果, 変更中パラメータ]
+  task_state:            # = localStorage.import_in_progress / b0Done 相当（永続）
+    scope: durable
+    holds: [処理済み月リスト(committed), 各月のstate, ベースライン値のハッシュ]
+  resume_contract:       # A-4: 中断から再開時に復元する状態
+    restore: [最後に committed した月, 未処理月キュー, working_memory]
+    resume_label_example: "▶ 2026-06 から再開（残り 7ヶ月 / 確定 3ヶ月）"
+
+# ---- 変更検知（A-2: ベースラインからの差分でのみ再行動。冪等性の基礎）----
+dirty_detection:
+  baseline: task_state.holds.ベースライン値のハッシュ
+  rule: 売上 or 賃料設定がベースラインから変化した月のみ tentative を再計算する
+  on_no_change: skip（再計算・再適用しない＝重複実行の抑止）
+
+# ---- コミットゲート（A-1終端の副作用 + R-005: 不可逆アクションの隔離）----
+commit_gates:           # tentative → committed の発火条件。1つでも fail なら commit しない
+  - guardrails.yaml: no_apply_without_budget を満たす
+  - guardrails.yaml: end_month_fixed_dec を満たす（終了月12月固定）
+  - guardrails.yaml: output_invariants を満たす（rent_amount >= min_guarantee 等）
+  - no_silent_overwrite: 既存 committed / 単月設定済み月は人間確認を経る（→ escalated）
+  side_effect: 対象月への賃料書込み（不可逆）。冪等性キー = (store_id, month)
+
+# ---- モード別ポリシー（A-3: 新規 vs 運用更新 の永続ポリシー分岐に相当）----
+mode_policies:
+  dry_run:               # = ops mode が localStorage を使わない設計に相当
+    persist: false
+    commit: 禁止（tentative までで止める。プレビュー/検証専用）
+    use_for: 影響確認・eval 実行
+  production:
+    persist: true
+    commit: 許可（commit_gates 通過時）
+
+# ---- 回復アクション（A-5: 判別不可ケースへの一様な回復手 = 均一3ボタン J-001）----
+recovery_actions:        # 未分類・異常状態に対して常にこの集合から選ぶ
+  - skip:     この月を処理しない（理由を記録）
+  - exclude:  対象から外す（ユーザー操作）
+  - escalate: 人間に二択以上を提示（自動で進めない）
+  policy: 状態を分類できない時は必ず escalate（推測で committed しない）
+
+# ---- 異常終了ハンドリング（A-4: beforeunload 相当）----
+on_abort:
+  action: working_memory を task_state に退避し、resume_contract を更新
+  guarantee: committed 済みは保持、tentative は再開時に復元
